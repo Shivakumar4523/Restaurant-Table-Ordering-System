@@ -1,0 +1,27 @@
+{
+  "name": "Royal Spice Restaurant Ordering",
+  "short_name": "Royal Spice",
+  "description": "Premium mobile-first restaurant ordering with Razorpay, UPI, COD, reservations, and live tracking.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffaf1",
+  "theme_color": "#d8232a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-card.svg",
+      "sizes": "1200x630",
+      "type": "image/svg+xml",
+      "form_factor": "wide"
+    }
+  ]
+}

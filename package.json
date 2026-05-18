@@ -1,0 +1,24 @@
+{
+  "name": "royal-spice-restaurant-ordering",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack Royal Spice Restaurant table ordering system with React, Vite, Express, MongoDB, JWT auth, and Socket.IO.",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "dev:backend": "npm --workspace backend run dev",
+    "build": "npm --workspace frontend run build",
+    "start": "npm --workspace backend start",
+    "seed": "npm --workspace backend run seed",
+    "lint": "npm --workspace frontend run lint",
+    "check:case": "node scripts/check-case.mjs"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "npm-run-all": "^4.1.5"
+  }
+}

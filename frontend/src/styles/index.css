@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #fff7df;
+  background: #06130e;
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(246, 201, 90, 0.16), transparent 24rem),
+    radial-gradient(circle at 92% 10%, rgba(47, 176, 111, 0.16), transparent 24rem),
+    linear-gradient(180deg, #06130e 0%, #0a1d15 100%);
+}
+
+#root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.tap-target {
+  min-height: 44px;
+}
+
+.glass {
+  border: 1px solid rgba(246, 201, 90, 0.16);
+  background: rgba(9, 29, 21, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+#root [class~="bg-white"],
+#root [class~="bg-white/70"],
+#root [class~="bg-white/72"],
+#root [class~="bg-white/75"],
+#root [class~="bg-white/80"],
+#root [class~="bg-white/85"],
+#root [class~="bg-white/86"],
+#root [class~="bg-white/88"] {
+  background-color: rgba(11, 31, 23, 0.9) !important;
+}
+
+#root [class~="bg-cream"] {
+  background-color: rgba(6, 19, 14, 0.96) !important;
+}
+
+#root [class~="bg-forest-50"],
+#root [class~="bg-stone-100"] {
+  background-color: rgba(19, 55, 39, 0.86) !important;
+}
+
+#root [class~="bg-gold-100"] {
+  background-color: rgba(246, 201, 90, 0.14) !important;
+}
+
+#root [class~="border-black/5"],
+#root [class~="border-black/10"],
+#root [class~="border-black/20"] {
+  border-color: rgba(246, 201, 90, 0.16) !important;
+}
+
+#root [class~="text-ink"] {
+  color: #fff7df !important;
+}
+
+#root [class~="text-stone-300"],
+#root [class~="text-stone-400"],
+#root [class~="text-stone-500"],
+#root [class~="text-stone-600"],
+#root [class~="text-stone-700"],
+#root [class~="text-stone-800"] {
+  color: #c9d6c8 !important;
+}
+
+#root [class~="text-gold-700"] {
+  color: #f6c95a !important;
+}
+
+#root [class~="bg-gold-300"][class~="text-ink"],
+#root [class~="bg-gold-100"][class~="text-ink"] {
+  color: #06130e !important;
+}
+
+#root [class~="hover:bg-white"]:hover,
+#root [class~="hover:bg-white/10"]:hover,
+#root [class~="hover:bg-white/15"]:hover,
+#root [class~="hover:bg-white/20"]:hover,
+#root [class~="hover:bg-white/70"]:hover {
+  background-color: rgba(246, 201, 90, 0.12) !important;
+}
+
+#root input,
+#root textarea,
+#root select {
+  background-color: rgba(8, 27, 19, 0.94);
+  border-color: rgba(246, 201, 90, 0.18);
+  color: #fff7df;
+}
+
+#root input::placeholder,
+#root textarea::placeholder {
+  color: rgba(201, 214, 200, 0.68);
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 24px;
+    background: white !important;
+    color: #101714 !important;
+  }
+
+  .print-area * {
+    color: #101714 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+}
