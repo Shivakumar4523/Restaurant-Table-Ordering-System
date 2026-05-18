@@ -1,7 +1,8 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { BarChart3, ChefHat, ClipboardList, LogOut, Settings, Table2, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
+import type { Role } from "@/lib/api";
 
 const links = [
   { href: "/staff/orders", label: "Orders", icon: ClipboardList, roles: ["admin", "waiter", "cashier"] },
@@ -9,8 +10,14 @@ const links = [
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] }
 ];
 
+const quickLinks: Array<{ href: string; label: string; icon: typeof Table2; roles: Role[] }> = [
+  { href: "/staff/orders", label: "Live tables", icon: Table2, roles: ["admin", "waiter", "cashier"] },
+  { href: "/admin?tab=overview", label: "Sales reports", icon: BarChart3, roles: ["admin"] }
+];
+
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const visibleQuickLinks = quickLinks.filter((link) => user && link.roles.includes(user.role));
 
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-white/10 bg-forest-900 p-5 text-white lg:block xl:w-72">
@@ -19,8 +26,8 @@ export function Sidebar() {
           <Utensils size={22} />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-lg font-black">Royal Spice</p>
-          <p className="truncate text-xs font-bold text-gold-300">Table Ordering System</p>
+          <p className="truncate font-brand text-xl font-bold italic leading-5 tracking-wide">Royal Spice</p>
+          <p className="truncate font-brand text-sm font-semibold italic leading-5 text-gold-300">Table Ordering System</p>
         </div>
       </div>
       <div className="mt-8 rounded-[8px] bg-white/10 p-4">
@@ -46,16 +53,20 @@ export function Sidebar() {
           ))}
       </nav>
       <div className="absolute bottom-5 left-5 right-5 space-y-3">
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-[8px] bg-white/10 p-3">
-            <Table2 size={16} />
-            <p className="mt-2 font-black">Live tables</p>
+        {visibleQuickLinks.length ? (
+          <div className={`${visibleQuickLinks.length === 1 ? "grid-cols-1" : "grid-cols-2"} grid gap-2 text-xs`}>
+            {visibleQuickLinks.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                to={href}
+                className="rounded-[8px] bg-white/10 p-3 text-left transition hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-300"
+              >
+                <Icon size={16} />
+                <p className="mt-2 font-black">{label}</p>
+              </Link>
+            ))}
           </div>
-          <div className="rounded-[8px] bg-white/10 p-3">
-            <BarChart3 size={16} />
-            <p className="mt-2 font-black">Sales reports</p>
-          </div>
-        </div>
+        ) : null}
         <Button variant="ghost" className="w-full border-white/20 bg-white/10 text-white hover:bg-white/15" onClick={logout}>
           <LogOut size={16} />
           Logout

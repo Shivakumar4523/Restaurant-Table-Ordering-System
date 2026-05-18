@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -27,35 +28,59 @@ type Tab = "overview" | "menu" | "categories" | "tables" | "employees";
 
 const tabs: Tab[] = ["overview", "menu", "categories", "tables", "employees"];
 
+function parseTab(value: string | null): Tab {
+  return tabs.includes(value as Tab) ? (value as Tab) : "overview";
+}
+
 export function AdminDashboard() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => parseTab(searchParams.get("tab")));
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
   const [report, setReport] = useState<SalesReport | null>(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function load() {
-    const [categoryData, menuData, tableData, employeeData, reportData] = await Promise.all([
-      getCategories(),
-      getMenuItems({ available: false }),
-      getTables(),
-      getEmployees(),
-      getSalesReport().catch(() => null)
-    ]);
-    setCategories(categoryData);
-    setItems(menuData);
-    setTables(tableData);
-    setEmployees(employeeData);
-    setReport(reportData);
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const [categoryData, menuData, tableData, employeeData, reportData] = await Promise.all([
+        getCategories(),
+        getMenuItems({ available: false }),
+        getTables(),
+        getEmployees(),
+        getSalesReport().catch(() => null)
+      ]);
+      setCategories(categoryData);
+      setItems(menuData);
+      setTables(tableData);
+      setEmployees(employeeData);
+      setReport(reportData);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to refresh dashboard data.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
     load();
   }, []);
 
+  useEffect(() => {
+    setTab(parseTab(searchParams.get("tab")));
+  }, [searchParams]);
+
   const categoryOptions = useMemo(() => categories.map((category) => category.name), [categories]);
+
+  function selectTab(nextTab: Tab) {
+    setTab(nextTab);
+    setSearchParams(nextTab === "overview" ? {} : { tab: nextTab }, { replace: true });
+  }
 
   async function onMenuSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,15 +155,15 @@ export function AdminDashboard() {
           <p className="text-xs font-black uppercase text-gold-700">Admin dashboard</p>
           <h2 className="mt-1 text-3xl font-black text-ink">Manage Royal Spice Restaurant</h2>
         </div>
-        <Button variant="ghost" onClick={load}>
-          <RefreshCw size={16} />
-          Refresh
+        <Button variant="ghost" onClick={load} disabled={loading}>
+          <RefreshCw className={loading ? "animate-spin" : undefined} size={16} />
+          {loading ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
         {tabs.map((item) => (
-          <Button key={item} variant={tab === item ? "primary" : "ghost"} className="h-10 min-h-10 capitalize" onClick={() => setTab(item)}>
+          <Button key={item} variant={tab === item ? "primary" : "ghost"} className="h-10 min-h-10 capitalize" onClick={() => selectTab(item)}>
             {item}
           </Button>
         ))}

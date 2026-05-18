@@ -35,6 +35,7 @@ const config = {
         gold: "0 18px 60px rgba(246, 201, 90, 0.18)"
       },
       fontFamily: {
+        brand: ["Georgia", "Cambria", "Times New Roman", "serif"],
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       backgroundImage: {
