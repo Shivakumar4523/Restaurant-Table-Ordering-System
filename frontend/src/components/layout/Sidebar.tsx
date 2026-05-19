@@ -26,7 +26,15 @@ export function Sidebar() {
           <Utensils size={22} />
         </span>
         <div className="min-w-0">
-          <p className="truncate font-brand text-xl font-bold italic leading-5 tracking-wide">Royal Spice</p>
+          <p className="truncate font-brand text-xl font-bold italic leading-5 tracking-wide">
+            Royal Spice
+            <span
+              className="ml-2 inline-block -rotate-2 align-super text-[17px] font-normal leading-none text-gold-300 drop-shadow-[0_2px_10px_rgba(246,201,90,0.3)]"
+              style={{ fontFamily: '"Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive' }}
+            >
+              Shiva
+            </span>
+          </p>
           <p className="truncate font-brand text-sm font-semibold italic leading-5 text-gold-300">Table Ordering System</p>
         </div>
       </div>
