@@ -40,7 +40,7 @@ export function Menu() {
           </Button>
         ))}
       </div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
         {visible.map((item) => (
           <MenuCard key={item._id} item={item} />
         ))}

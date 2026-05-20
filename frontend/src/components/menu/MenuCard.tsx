@@ -16,23 +16,23 @@ export function MenuCard({
   quantity?: number;
 }) {
   return (
-    <article className="glass flex h-full flex-col rounded-[8px] p-4 shadow-sm">
+    <article className="glass flex h-full min-w-0 flex-col rounded-[8px] p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <VegBadge type={item.foodType} />
-            <p className="text-xs font-black uppercase text-gold-700">{item.categoryName}</p>
+            <p className="min-w-0 text-xs font-black uppercase text-gold-700">{item.categoryName}</p>
           </div>
           <h3 className="mt-2 text-lg font-black text-ink">{item.name}</h3>
         </div>
         <p className="shrink-0 text-base font-black text-forest-700">{formatMoney(item.price)}</p>
       </div>
       <p className="mt-2 line-clamp-3 text-sm leading-6 text-stone-600">{item.description}</p>
-      <div className="mt-auto flex items-center justify-between gap-3 pt-4">
-        <span className="text-xs font-bold text-stone-500">{item.prepTime || 15} min</span>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
+        <span className="shrink-0 whitespace-nowrap text-xs font-bold text-stone-500">{item.prepTime || 15} min</span>
         {onAdd && quantity > 0 && onQuantityChange ? (
           <div
-            className="inline-grid h-10 w-[126px] shrink-0 grid-cols-[36px_54px_36px] items-center overflow-hidden rounded-full border border-gold-300/20 bg-forest-900 text-white shadow-glow"
+            className="inline-grid h-10 w-[126px] max-w-full shrink-0 grid-cols-[36px_54px_36px] items-center overflow-hidden rounded-full border border-gold-300/20 bg-forest-900 text-white shadow-glow"
             role="group"
             aria-label={`${item.name} quantity`}
           >
