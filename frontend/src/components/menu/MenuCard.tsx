@@ -32,7 +32,7 @@ export function MenuCard({
         <span className="text-xs font-bold text-stone-500">{item.prepTime || 15} min</span>
         {onAdd && quantity > 0 && onQuantityChange ? (
           <div
-            className="inline-grid h-11 min-w-[156px] grid-cols-[44px_56px_44px] items-center overflow-hidden rounded-full border border-gold-300/20 bg-forest-900 text-white shadow-glow"
+            className="inline-grid h-10 w-[126px] shrink-0 grid-cols-[36px_54px_36px] items-center overflow-hidden rounded-full border border-gold-300/20 bg-forest-900 text-white shadow-glow"
             role="group"
             aria-label={`${item.name} quantity`}
           >
@@ -44,7 +44,7 @@ export function MenuCard({
             >
               <Minus size={16} />
             </button>
-            <span className="grid h-full place-items-center bg-white/16 px-3 text-lg font-black text-white">
+            <span className="grid h-full place-items-center bg-white/16 text-base font-black text-white">
               {quantity}
             </span>
             <button
