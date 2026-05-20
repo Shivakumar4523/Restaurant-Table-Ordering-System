@@ -1,17 +1,27 @@
 import { Link, NavLink } from "react-router-dom";
-import { BarChart3, ChefHat, ClipboardList, LogOut, Settings, Table2, Utensils } from "lucide-react";
+import { BarChart3, ChefHat, ClipboardList, LogOut, ReceiptText, Settings, Table2, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import type { Role } from "@/lib/api";
 
-const links = [
-  { href: "/staff/orders", label: "Orders", icon: ClipboardList, roles: ["admin", "waiter", "cashier"] },
+type SidebarLink = {
+  href: string;
+  label: string;
+  cashierLabel?: string;
+  icon: typeof ClipboardList;
+  cashierIcon?: typeof ClipboardList;
+  roles: Role[];
+};
+
+const links: SidebarLink[] = [
+  { href: "/staff/orders", label: "Orders", cashierLabel: "Billing", icon: ClipboardList, cashierIcon: ReceiptText, roles: ["admin", "waiter", "cashier"] },
   { href: "/kitchen", label: "Kitchen", icon: ChefHat, roles: ["admin", "kitchen"] },
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] }
 ];
 
 const quickLinks: Array<{ href: string; label: string; icon: typeof Table2; roles: Role[] }> = [
-  { href: "/staff/orders", label: "Live tables", icon: Table2, roles: ["admin", "waiter", "cashier"] },
+  { href: "/staff/orders", label: "Live tables", icon: Table2, roles: ["admin", "waiter"] },
+  { href: "/staff/orders", label: "Unpaid bills", icon: ReceiptText, roles: ["cashier"] },
   { href: "/admin?tab=overview", label: "Sales reports", icon: BarChart3, roles: ["admin"] }
 ];
 
@@ -45,20 +55,25 @@ export function Sidebar() {
       <nav className="mt-6 space-y-2">
         {links
           .filter((link) => user && link.roles.includes(user.role))
-          .map(({ href, label, icon: Icon }) => (
-            <NavLink
-              key={href}
-              to={href}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-[8px] px-4 py-3 text-sm font-black transition ${
-                  isActive ? "bg-gold-300 text-forest-900" : "text-white/80 hover:bg-white/10 hover:text-white"
-                }`
-              }
-            >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
+          .map((link) => {
+            const Icon = user?.role === "cashier" && link.cashierIcon ? link.cashierIcon : link.icon;
+            const label = user?.role === "cashier" && link.cashierLabel ? link.cashierLabel : link.label;
+
+            return (
+              <NavLink
+                key={link.href}
+                to={link.href}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-[8px] px-4 py-3 text-sm font-black transition ${
+                    isActive ? "bg-gold-300 text-forest-900" : "text-white/80 hover:bg-white/10 hover:text-white"
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            );
+          })}
       </nav>
       <div className="absolute bottom-5 left-5 right-5 space-y-3">
         {visibleQuickLinks.length ? (

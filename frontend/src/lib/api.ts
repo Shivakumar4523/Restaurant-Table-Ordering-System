@@ -69,6 +69,16 @@ export type Order = {
   billNumber?: string;
 };
 
+export type Bill = {
+  order: Order;
+  subtotal: number;
+  discount: number;
+  gst: number;
+  gstRate: number;
+  total: number;
+  billNumber: string;
+};
+
 export type SalesReport = {
   revenue: number;
   gst: number;
@@ -149,7 +159,7 @@ export async function markBilling(id: string) {
 }
 
 export async function getBill(id: string) {
-  const { data } = await api.get<{ bill: Order & { order: Order; gst: number; total: number; billNumber: string } }>(`/orders/${id}/bill`);
+  const { data } = await api.get<{ bill: Bill }>(`/orders/${id}/bill`);
   return data.bill;
 }
 

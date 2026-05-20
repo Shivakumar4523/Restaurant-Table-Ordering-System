@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Send } from "lucide-react";
+import { Banknote, CreditCard, QrCode, ReceiptText, RefreshCw, Search, Send } from "lucide-react";
 import { BillPreview } from "@/components/orders/BillPreview";
-import { OrderCard } from "@/components/orders/OrderCard";
 import { TableGrid } from "@/components/orders/TableGrid";
 import { MenuCard } from "@/components/menu/MenuCard";
 import { QuantityStepper } from "@/components/menu/QuantityStepper";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/context/AuthContext";
+import { useSocket } from "@/context/SocketContext";
 import {
   getActiveOrders,
   getBill,
@@ -16,14 +18,13 @@ import {
   markBilling,
   recordPayment,
   submitTableOrder,
-  updateOrderStatus,
+  type Bill,
   type Category,
   type MenuItem,
   type Order,
   type RestaurantTable
 } from "@/lib/api";
 import { formatMoney } from "@/lib/constants";
-import { useSocket } from "@/context/SocketContext";
 
 type CartLine = {
   item: MenuItem;
@@ -31,26 +32,86 @@ type CartLine = {
   note?: string;
 };
 
+type CashierFilter = "all" | "ready" | "served" | "billing";
+type PaymentMethod = "cash" | "card" | "upi";
+
+const cashierFilters: Array<{ value: CashierFilter; label: string }> = [
+  { value: "all", label: "All unpaid" },
+  { value: "ready", label: "Ready" },
+  { value: "served", label: "Served" },
+  { value: "billing", label: "Billing" }
+];
+
+const paymentMethods: Array<{ method: PaymentMethod; label: string; Icon: typeof Banknote }> = [
+  { method: "cash", label: "Cash", Icon: Banknote },
+  { method: "card", label: "Card", Icon: CreditCard },
+  { method: "upi", label: "UPI", Icon: QrCode }
+];
+
+const orderStatusStyles: Record<Order["status"], string> = {
+  pending: "border-yellow-200 bg-yellow-100 text-yellow-800",
+  preparing: "border-orange-200 bg-orange-100 text-orange-800",
+  ready: "border-emerald-200 bg-emerald-100 text-emerald-800",
+  served: "border-forest-700 bg-forest-50 text-forest-700",
+  billing: "border-blue-200 bg-blue-100 text-blue-800",
+  cancelled: "border-red-200 bg-red-100 text-red-800"
+};
+
+function mergeActiveOrder(current: Order[], order: Order) {
+  if (order.paymentStatus === "paid") {
+    return current.filter((item) => item._id !== order._id);
+  }
+
+  if (current.some((item) => item._id === order._id)) {
+    return current.map((item) => (item._id === order._id ? order : item));
+  }
+
+  return [order, ...current];
+}
+
+function buildBillOrder(bill: Bill): Order {
+  return {
+    ...bill.order,
+    subtotal: bill.subtotal,
+    discount: bill.discount,
+    gst: bill.gst,
+    gstRate: bill.gstRate,
+    total: bill.total,
+    billNumber: bill.billNumber
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function Orders() {
+  const { user } = useAuth();
+
+  if (user?.role === "cashier") {
+    return <CashierOrders />;
+  }
+
+  return <WaiterOrders />;
+}
+
+function WaiterOrders() {
   const { socket } = useSocket();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerNotes, setCustomerNotes] = useState("");
-  const [bill, setBill] = useState<Order | null>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    Promise.all([getTables(), getCategories(), getMenuItems(), getActiveOrders()]).then(([tableData, categoryData, menuData, orderData]) => {
+    Promise.all([getTables(), getCategories(), getMenuItems()]).then(([tableData, categoryData, menuData]) => {
       setTables(tableData);
       setCategories(categoryData);
       setItems(menuData);
-      setOrders(orderData);
       setSelectedTable(tableData[0] || null);
     });
   }, []);
@@ -58,15 +119,15 @@ export function Orders() {
   useEffect(() => {
     if (!socket) return;
 
+    const handleTableUpdate = (table: RestaurantTable) => {
+      setTables((current) => current.map((item) => (item._id === table._id ? { ...item, ...table } : item)));
+    };
+
     socket.emit("join:staff");
-    socket.on("order:created", (order: Order) => setOrders((current) => [order, ...current.filter((item) => item._id !== order._id)]));
-    socket.on("order:updated", (order: Order) => setOrders((current) => current.map((item) => (item._id === order._id ? order : item)).filter((item) => item.paymentStatus !== "paid")));
-    socket.on("table:updated", (table: RestaurantTable) => setTables((current) => current.map((item) => (item._id === table._id ? { ...item, ...table } : item))));
+    socket.on("table:updated", handleTableUpdate);
 
     return () => {
-      socket.off("order:created");
-      socket.off("order:updated");
-      socket.off("table:updated");
+      socket.off("table:updated", handleTableUpdate);
     };
   }, [socket]);
 
@@ -105,35 +166,15 @@ export function Orders() {
       return;
     }
 
-    const order = await submitTableOrder({
+    await submitTableOrder({
       tableId: selectedTable._id,
       customerNotes,
       items: cart.map((line) => ({ menuItem: line.item._id, quantity: line.quantity, note: line.note }))
     });
 
-    setOrders((current) => [order, ...current]);
     setCart([]);
     setCustomerNotes("");
     setMessage(`Order sent for table ${selectedTable.number}.`);
-    setTables(await getTables());
-  }
-
-  async function changeStatus(order: Order, status: string) {
-    const updated = status === "billing" ? await markBilling(order._id) : await updateOrderStatus(order._id, status);
-    setOrders((current) => current.map((item) => (item._id === updated._id ? updated : item)));
-  }
-
-  async function openBill(order: Order) {
-    const billData = await getBill(order._id);
-    await markBilling(order._id);
-    setBill({ ...billData.order, gst: billData.gst, total: billData.total, billNumber: billData.billNumber });
-  }
-
-  async function markPaid(method: "cash" | "card" | "upi") {
-    if (!bill) return;
-    await recordPayment(bill._id, method);
-    setBill(null);
-    setOrders(await getActiveOrders());
     setTables(await getTables());
   }
 
@@ -199,15 +240,249 @@ export function Orders() {
           Submit order
         </Button>
       </aside>
-      <section className="min-w-0 lg:col-start-1">
-        <h3 className="text-xl font-black text-ink">Active table orders</h3>
-        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-          {orders.map((order) => (
-            <OrderCard key={order._id} order={order} onStatus={changeStatus} onBill={openBill} />
+    </main>
+  );
+}
+
+function CashierOrders() {
+  const { socket } = useSocket();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [activeFilter, setActiveFilter] = useState<CashierFilter>("all");
+  const [query, setQuery] = useState("");
+  const [billOrder, setBillOrder] = useState<Order | null>(null);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+
+  async function loadOrders() {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const activeOrders = await getActiveOrders();
+      setOrders(activeOrders.filter((order) => order.paymentStatus !== "paid"));
+    } catch (error) {
+      setMessage(getErrorMessage(error, "Unable to load cashier orders."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const syncOrder = (order: Order) => setOrders((current) => mergeActiveOrder(current, order));
+
+    socket.emit("join:staff");
+    socket.on("order:created", syncOrder);
+    socket.on("order:updated", syncOrder);
+
+    return () => {
+      socket.off("order:created", syncOrder);
+      socket.off("order:updated", syncOrder);
+    };
+  }, [socket]);
+
+  const visibleOrders = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const matchesFilter = activeFilter === "all" || order.status === activeFilter;
+      const searchableText = [
+        order.table?.number,
+        order.tableNumber,
+        order._id,
+        order.status,
+        order.waiter?.name,
+        ...order.items.map((item) => item.name)
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return matchesFilter && (!normalized || searchableText.includes(normalized));
+    });
+  }, [activeFilter, orders, query]);
+
+  const billingCount = orders.filter((order) => order.status === "billing").length;
+  const dueTotal = orders.reduce((sum, order) => sum + order.total, 0);
+  const readyCount = orders.filter((order) => order.status === "ready" || order.status === "served").length;
+
+  async function handleGenerateBill(order: Order) {
+    setBusyOrderId(order._id);
+    setMessage("");
+
+    try {
+      const billingOrder = order.status === "billing" ? order : await markBilling(order._id);
+      setOrders((current) => mergeActiveOrder(current, billingOrder));
+
+      const bill = await getBill(billingOrder._id);
+      const previewOrder = buildBillOrder(bill);
+      setBillOrder(previewOrder);
+      setOrders((current) => mergeActiveOrder(current, previewOrder));
+      setMessage(`Bill ready for table ${previewOrder.table?.number || previewOrder.tableNumber}.`);
+    } catch (error) {
+      setMessage(getErrorMessage(error, "Unable to generate bill."));
+    } finally {
+      setBusyOrderId(null);
+    }
+  }
+
+  async function handlePayment(order: Order, method: PaymentMethod) {
+    setBusyOrderId(order._id);
+    setMessage("");
+
+    try {
+      const paidOrder = await recordPayment(order._id, method);
+      setOrders((current) => current.filter((item) => item._id !== paidOrder._id));
+      setBillOrder(null);
+      setMessage(`Payment recorded for table ${paidOrder.table?.number || paidOrder.tableNumber}.`);
+    } catch (error) {
+      setMessage(getErrorMessage(error, "Unable to record payment."));
+    } finally {
+      setBusyOrderId(null);
+    }
+  }
+
+  return (
+    <main className="w-full max-w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase text-gold-700">Cashier billing</p>
+          <h2 className="mt-1 break-words text-2xl font-black text-ink sm:text-3xl">Table bills and payments</h2>
+        </div>
+        <Button variant="ghost" className="h-10 min-h-10 px-4" onClick={loadOrders} disabled={loading}>
+          <RefreshCw className={loading ? "animate-spin" : undefined} size={16} />
+          {loading ? "Refreshing..." : "Refresh"}
+        </Button>
+      </div>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <div className="glass rounded-[8px] p-4">
+          <p className="text-xs font-black uppercase text-gold-700">Unpaid orders</p>
+          <p className="mt-2 text-2xl font-black text-ink">{orders.length}</p>
+        </div>
+        <div className="glass rounded-[8px] p-4">
+          <p className="text-xs font-black uppercase text-gold-700">Ready or served</p>
+          <p className="mt-2 text-2xl font-black text-ink">{readyCount}</p>
+        </div>
+        <div className="glass rounded-[8px] p-4">
+          <p className="text-xs font-black uppercase text-gold-700">Amount due</p>
+          <p className="mt-2 text-2xl font-black text-ink">{formatMoney(dueTotal)}</p>
+        </div>
+      </div>
+
+      {message ? <p className="mt-4 rounded-[8px] bg-gold-100 p-3 text-sm font-black text-ink">{message}</p> : null}
+
+      <div className="mt-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative w-full xl:max-w-md">
+          <Search className="absolute left-3 top-3 text-stone-400" size={17} />
+          <Input className="pl-10" placeholder="Search table, order, dish, waiter" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </div>
+        <div className="hide-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+          {cashierFilters.map((filter) => (
+            <Button
+              key={filter.value}
+              variant={activeFilter === filter.value ? "primary" : "ghost"}
+              className="h-10 min-h-10 whitespace-nowrap px-4"
+              onClick={() => setActiveFilter(filter.value)}
+            >
+              {filter.label}
+              {filter.value === "billing" ? <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{billingCount}</span> : null}
+            </Button>
           ))}
         </div>
-      </section>
-      <BillPreview order={bill} onClose={() => setBill(null)} onPaid={markPaid} />
+      </div>
+
+      <div className="mt-6 grid min-w-0 gap-4 xl:grid-cols-2">
+        {visibleOrders.map((order) => (
+          <CashierOrderCard
+            key={order._id}
+            order={order}
+            busy={busyOrderId === order._id}
+            onBill={handleGenerateBill}
+            onPaid={handlePayment}
+          />
+        ))}
+      </div>
+
+      {!visibleOrders.length ? (
+        <p className="mt-8 w-full max-w-full break-words rounded-[8px] border border-dashed border-black/20 p-8 text-center font-bold text-stone-600">
+          No unpaid table bills found.
+        </p>
+      ) : null}
+
+      <BillPreview
+        order={billOrder}
+        onClose={() => setBillOrder(null)}
+        onPaid={(method) => {
+          if (billOrder) handlePayment(billOrder, method);
+        }}
+      />
     </main>
+  );
+}
+
+function CashierOrderCard({
+  order,
+  busy,
+  onBill,
+  onPaid
+}: {
+  order: Order;
+  busy: boolean;
+  onBill: (order: Order) => void;
+  onPaid: (order: Order, method: PaymentMethod) => void;
+}) {
+  const canBill = order.status === "ready" || order.status === "served" || order.status === "billing";
+  const canPay = order.status === "billing";
+  const tableNumber = order.table?.number || order.tableNumber;
+  const orderedAt = new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <article className="min-w-0 rounded-[8px] border border-black/10 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase text-gold-700">Table {tableNumber}</p>
+          <h3 className="mt-1 text-lg font-black text-ink">Order #{order._id.slice(-6).toUpperCase()}</h3>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge className={orderStatusStyles[order.status]}>{order.status}</Badge>
+            <span className="text-xs font-bold text-stone-600">{orderedAt}</span>
+            <span className="text-xs font-bold text-stone-600">{order.waiter?.name || "Staff"}</span>
+          </div>
+        </div>
+        <p className="shrink-0 text-2xl font-black text-forest-700">{formatMoney(order.total)}</p>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {order.items.map((item, index) => (
+          <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[8px] bg-cream px-3 py-2 text-sm" key={`${item.name}-${index}`}>
+            <span className="min-w-0 break-words font-bold text-ink">{item.quantity} x {item.name}</span>
+            <span className="shrink-0 font-black">{formatMoney(item.price * item.quantity)}</span>
+          </div>
+        ))}
+      </div>
+
+      {order.customerNotes ? <p className="mt-3 rounded-[8px] bg-gold-100 p-3 text-sm font-bold text-ink">Note: {order.customerNotes}</p> : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button variant="secondary" className="h-10 min-h-10 px-4" onClick={() => onBill(order)} disabled={!canBill || busy}>
+          <ReceiptText size={16} />
+          {order.status === "billing" ? "View bill" : "Generate bill"}
+        </Button>
+        {canPay
+          ? paymentMethods.map(({ method, label, Icon }) => (
+              <Button key={method} className="h-10 min-h-10 px-4" onClick={() => onPaid(order, method)} disabled={busy}>
+                <Icon size={16} />
+                {label}
+              </Button>
+            ))
+          : null}
+      </div>
+    </article>
   );
 }

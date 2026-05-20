@@ -1,3 +1,4 @@
+import { Banknote, CreditCard, Printer, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { formatMoney } from "@/lib/constants";
 import type { Order } from "@/lib/api";
@@ -37,11 +38,24 @@ export function BillPreview({
         </div>
         <div className="no-print mt-6 flex flex-wrap gap-2">
           <Button variant="ghost" onClick={onClose}>Close</Button>
-          <Button variant="secondary" onClick={() => window.print()}>Print bill</Button>
+          <Button variant="secondary" onClick={() => window.print()}>
+            <Printer size={15} />
+            Print bill
+          </Button>
           {onPaid ? (
             <>
-              <Button onClick={() => onPaid("cash")}>Paid cash</Button>
-              <Button onClick={() => onPaid("upi")}>Paid UPI</Button>
+              <Button onClick={() => onPaid("cash")}>
+                <Banknote size={15} />
+                Paid cash
+              </Button>
+              <Button onClick={() => onPaid("card")}>
+                <CreditCard size={15} />
+                Paid card
+              </Button>
+              <Button onClick={() => onPaid("upi")}>
+                <QrCode size={15} />
+                Paid UPI
+              </Button>
             </>
           ) : null}
         </div>
