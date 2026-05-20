@@ -138,7 +138,7 @@ export function Orders() {
   }
 
   return (
-    <main className="grid gap-5 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <main className="grid w-full max-w-none gap-5 px-2 py-4 sm:gap-6 sm:px-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <section className="min-w-0 space-y-5 sm:space-y-6">
         <div>
           <p className="text-xs font-black uppercase text-gold-700">Waiter ordering</p>
@@ -158,7 +158,7 @@ export function Orders() {
             ))}
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid w-full gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
           {visibleItems.map((item) => (
             <MenuCard
               key={item._id}
@@ -201,7 +201,7 @@ export function Orders() {
       </aside>
       <section className="min-w-0 lg:col-start-1">
         <h3 className="text-xl font-black text-ink">Active table orders</h3>
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
           {orders.map((order) => (
             <OrderCard key={order._id} order={order} onStatus={changeStatus} onBill={openBill} />
           ))}

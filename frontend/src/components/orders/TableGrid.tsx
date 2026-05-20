@@ -19,7 +19,7 @@ export function TableGrid({
   onSelect: (table: RestaurantTable) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+    <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr))] sm:gap-3">
       {tables.map((table) => (
         <button
           type="button"
