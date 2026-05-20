@@ -158,7 +158,7 @@ export function Orders() {
             ))}
           </div>
         </div>
-        <div className="grid gap-4">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
           {visibleItems.map((item) => (
             <MenuCard
               key={item._id}
