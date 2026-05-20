@@ -138,7 +138,7 @@ export function Orders() {
   }
 
   return (
-    <main className="grid gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:px-8">
+    <main className="grid gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,0.8fr)] lg:px-8">
       <section className="space-y-6">
         <div>
           <p className="text-xs font-black uppercase text-gold-700">Waiter ordering</p>
@@ -158,11 +158,12 @@ export function Orders() {
             ))}
           </div>
         </div>
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
+        <div className="grid gap-4">
           {visibleItems.map((item) => (
             <MenuCard
               key={item._id}
               item={item}
+              layout="list"
               onAdd={addItem}
               onQuantityChange={(menuItem, quantity) => setQuantity(menuItem._id, quantity)}
               quantity={itemQuantities.get(item._id) || 0}

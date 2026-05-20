@@ -6,6 +6,9 @@ build
 .env
 .env.local
 .env.*.local
+.refact/buddy/memory_ops.jsonl
+.refact/buddy/runtime_queue.jsonl
+.refact/buddy/state.json
 coverage
 backend/src/uploads/*
 !backend/src/uploads/.gitkeep
