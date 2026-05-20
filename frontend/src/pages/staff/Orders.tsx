@@ -138,19 +138,19 @@ export function Orders() {
   }
 
   return (
-    <main className="grid gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,0.8fr)] lg:px-8">
-      <section className="space-y-6">
+    <main className="grid gap-5 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="min-w-0 space-y-5 sm:space-y-6">
         <div>
           <p className="text-xs font-black uppercase text-gold-700">Waiter ordering</p>
-          <h2 className="mt-1 text-3xl font-black text-ink">Select table and add food items</h2>
+          <h2 className="mt-1 text-2xl font-black leading-tight text-ink sm:text-3xl">Select table and add food items</h2>
         </div>
         <TableGrid tables={tables} selectedId={selectedTable?._id} onSelect={setSelectedTable} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative max-w-md flex-1">
+          <div className="relative w-full flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-3 text-stone-400" size={17} />
             <Input className="pl-10" placeholder="Search menu items" value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="hide-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
             {["All", ...categories.map((category) => category.name)].map((category) => (
               <Button key={category} variant={activeCategory === category ? "primary" : "ghost"} className="h-10 min-h-10 whitespace-nowrap px-4" onClick={() => setActiveCategory(category)}>
                 {category}
@@ -158,36 +158,27 @@ export function Orders() {
             ))}
           </div>
         </div>
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {visibleItems.map((item) => (
             <MenuCard
               key={item._id}
               item={item}
-              layout="list"
               onAdd={addItem}
               onQuantityChange={(menuItem, quantity) => setQuantity(menuItem._id, quantity)}
               quantity={itemQuantities.get(item._id) || 0}
             />
           ))}
         </div>
-        <section>
-          <h3 className="text-xl font-black text-ink">Active table orders</h3>
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            {orders.map((order) => (
-              <OrderCard key={order._id} order={order} onStatus={changeStatus} onBill={openBill} />
-            ))}
-          </div>
-        </section>
       </section>
-      <aside className="h-fit rounded-[8px] bg-forest-900 p-5 text-white shadow-glow lg:sticky lg:top-20">
+      <aside className="h-fit rounded-[8px] bg-forest-900 p-4 text-white shadow-glow sm:p-5 lg:sticky lg:top-20">
         <p className="text-xs font-black uppercase text-gold-300">Current cart</p>
         <h2 className="mt-1 text-2xl font-black">Table {selectedTable?.number || "-"}</h2>
         <div className="mt-5 space-y-3">
           {cart.map((line) => (
             <div key={line.item._id} className="rounded-[8px] bg-white/10 p-3">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-black">{line.item.name}</p>
+                <div className="min-w-0">
+                  <p className="break-words font-black">{line.item.name}</p>
                   <p className="text-sm text-white/70">{formatMoney(line.item.price)}</p>
                 </div>
                 <QuantityStepper value={line.quantity} onChange={(value) => setQuantity(line.item._id, value)} />
@@ -208,6 +199,14 @@ export function Orders() {
           Submit order
         </Button>
       </aside>
+      <section className="min-w-0 lg:col-start-1">
+        <h3 className="text-xl font-black text-ink">Active table orders</h3>
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          {orders.map((order) => (
+            <OrderCard key={order._id} order={order} onStatus={changeStatus} onBill={openBill} />
+          ))}
+        </div>
+      </section>
       <BillPreview order={bill} onClose={() => setBill(null)} onPaid={markPaid} />
     </main>
   );

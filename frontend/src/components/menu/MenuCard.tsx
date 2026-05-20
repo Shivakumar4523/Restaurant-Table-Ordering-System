@@ -19,23 +19,31 @@ export function MenuCard({
   layout?: "card" | "list";
 }) {
   const isList = layout === "list";
+  const accentClass = item.foodType === "veg" ? "from-emerald-500 via-forest-500 to-gold-300" : "from-red-600 via-gold-300 to-forest-500";
 
   return (
-    <article className={clsx("glass flex h-full min-w-0 flex-col rounded-[8px] shadow-sm", isList ? "p-5 sm:p-6" : "p-4")}>
+    <article className={clsx("glass flex h-full min-w-0 flex-col rounded-[8px] shadow-sm", isList ? "p-5 sm:p-6" : "p-3.5 sm:p-4")}>
+      <div className={clsx("mb-4 h-1.5 rounded-full bg-gradient-to-r sm:mb-5", accentClass)} />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <VegBadge type={item.foodType} />
-            <p className="min-w-0 truncate text-xs font-black uppercase text-gold-700">{item.categoryName}</p>
+            <span className="shrink-0">
+              <VegBadge type={item.foodType} />
+            </span>
+            <p className="min-w-0 truncate rounded-full border border-gold-300/20 px-2 py-1 text-xs font-black uppercase text-gold-700">
+              {item.categoryName}
+            </p>
           </div>
-          <h3 className={clsx("font-black text-ink", isList ? "mt-4 text-xl sm:text-2xl" : "mt-2 text-lg")}>{item.name}</h3>
+          <h3 className={clsx("break-words font-black leading-tight text-ink", isList ? "mt-4 text-xl sm:text-2xl" : "mt-3 text-lg sm:mt-4 sm:text-xl")}>
+            {item.name}
+          </h3>
         </div>
-        <p className={clsx("shrink-0 font-black text-forest-700", isList ? "text-xl" : "text-base")}>{formatMoney(item.price)}</p>
+        <p className={clsx("shrink-0 font-black text-forest-700", isList ? "text-xl" : "text-base sm:text-lg")}>{formatMoney(item.price)}</p>
       </div>
-      <p className={clsx("text-stone-600", isList ? "mt-5 text-base leading-7" : "mt-2 line-clamp-3 text-sm leading-6")}>
+      <p className={clsx("text-stone-600", isList ? "mt-5 text-base leading-7" : "mt-3 line-clamp-3 text-sm leading-6 sm:mt-4")}>
         {item.description}
       </p>
-      <div className={clsx("mt-auto flex flex-wrap items-center justify-between gap-3", isList ? "pt-8" : "pt-4")}>
+      <div className={clsx("mt-auto flex flex-wrap items-center justify-between gap-3", isList ? "pt-8" : "pt-5 sm:pt-6")}>
         <span className={clsx("shrink-0 whitespace-nowrap font-bold text-stone-500", isList ? "text-sm" : "text-xs")}>{item.prepTime || 15} min</span>
         {onAdd && quantity > 0 && onQuantityChange ? (
           <div

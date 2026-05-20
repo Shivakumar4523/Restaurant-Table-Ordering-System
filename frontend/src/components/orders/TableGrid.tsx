@@ -19,19 +19,19 @@ export function TableGrid({
   onSelect: (table: RestaurantTable) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
       {tables.map((table) => (
         <button
           type="button"
           key={table._id}
           onClick={() => onSelect(table)}
           className={clsx(
-            "rounded-[8px] border-2 p-4 text-left transition hover:-translate-y-0.5",
+            "rounded-[8px] border-2 p-3 text-left transition hover:-translate-y-0.5 sm:p-4",
             statusRing[table.status],
             selectedId === table._id && "ring-4 ring-gold-300"
           )}
         >
-          <p className="text-2xl font-black text-ink">{table.number}</p>
+          <p className="text-xl font-black text-ink sm:text-2xl">{table.number}</p>
           <p className="mt-1 text-xs font-bold text-stone-600">{table.section} | {table.capacity} seats</p>
           <div className="mt-3">
             <TableStatusPill status={table.status} />
