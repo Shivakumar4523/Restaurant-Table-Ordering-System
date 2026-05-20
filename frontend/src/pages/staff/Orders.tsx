@@ -160,7 +160,13 @@ export function Orders() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visibleItems.map((item) => (
-            <MenuCard key={item._id} item={item} onAdd={addItem} quantity={itemQuantities.get(item._id) || 0} />
+            <MenuCard
+              key={item._id}
+              item={item}
+              onAdd={addItem}
+              onQuantityChange={(menuItem, quantity) => setQuantity(menuItem._id, quantity)}
+              quantity={itemQuantities.get(item._id) || 0}
+            />
           ))}
         </div>
         <section>
