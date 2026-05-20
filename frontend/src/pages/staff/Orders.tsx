@@ -82,6 +82,10 @@ export function Orders() {
   const subtotal = cart.reduce((sum, line) => sum + line.item.price * line.quantity, 0);
   const gst = Math.round(subtotal * 0.05);
   const total = subtotal + gst;
+  const itemQuantities = useMemo(
+    () => new Map(cart.map((line) => [line.item._id, line.quantity])),
+    [cart]
+  );
 
   function addItem(item: MenuItem) {
     setCart((current) => {
@@ -156,7 +160,7 @@ export function Orders() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visibleItems.map((item) => (
-            <MenuCard key={item._id} item={item} onAdd={addItem} />
+            <MenuCard key={item._id} item={item} onAdd={addItem} quantity={itemQuantities.get(item._id) || 0} />
           ))}
         </div>
         <section>
