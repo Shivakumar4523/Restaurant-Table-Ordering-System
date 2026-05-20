@@ -179,19 +179,53 @@ function WaiterOrders() {
   }
 
   return (
-    <main className="grid w-full max-w-none gap-5 px-2 py-4 sm:gap-6 sm:px-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
-      <section className="min-w-0 space-y-5 sm:space-y-6">
-        <div>
-          <p className="text-xs font-black uppercase text-gold-700">Waiter ordering</p>
-          <h2 className="mt-1 text-2xl font-black leading-tight text-ink sm:text-3xl">Select table and add food items</h2>
-        </div>
-        <TableGrid tables={tables} selectedId={selectedTable?._id} onSelect={setSelectedTable} />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full flex-1 sm:max-w-md">
+    <main className="w-full max-w-none px-2 py-4 sm:px-4 sm:py-6 lg:px-5">
+      <div className="grid w-full gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="min-w-0 space-y-5 sm:space-y-6">
+          <div>
+            <p className="text-xs font-black uppercase text-gold-700">Waiter ordering</p>
+            <h2 className="mt-1 text-2xl font-black leading-tight text-ink sm:text-3xl">Select table and add food items</h2>
+          </div>
+          <TableGrid tables={tables} selectedId={selectedTable?._id} onSelect={setSelectedTable} />
+        </section>
+        <aside className="h-fit rounded-[8px] bg-forest-900 p-4 text-white shadow-glow sm:p-5 lg:sticky lg:top-20">
+          <p className="text-xs font-black uppercase text-gold-300">Current cart</p>
+          <h2 className="mt-1 text-2xl font-black">Table {selectedTable?.number || "-"}</h2>
+          <div className="mt-5 space-y-3">
+            {cart.map((line) => (
+              <div key={line.item._id} className="rounded-[8px] bg-white/10 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words font-black">{line.item.name}</p>
+                    <p className="text-sm text-white/70">{formatMoney(line.item.price)}</p>
+                  </div>
+                  <QuantityStepper value={line.quantity} onChange={(value) => setQuantity(line.item._id, value)} />
+                </div>
+              </div>
+            ))}
+            {!cart.length ? <p className="rounded-[8px] bg-white/10 p-4 text-sm font-bold text-white/74">Add dishes from the menu to create an order.</p> : null}
+          </div>
+          <textarea className="mt-4 min-h-24 w-full rounded-[8px] border border-white/10 bg-white/10 p-3 text-sm font-semibold text-white outline-none placeholder:text-white/45" placeholder="Customer notes" value={customerNotes} onChange={(event) => setCustomerNotes(event.target.value)} />
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between"><span>Subtotal</span><strong>{formatMoney(subtotal)}</strong></div>
+            <div className="flex justify-between"><span>GST 5%</span><strong>{formatMoney(gst)}</strong></div>
+            <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong>{formatMoney(total)}</strong></div>
+          </div>
+          {message ? <p className="mt-4 rounded-[8px] bg-gold-300 p-3 text-sm font-black text-forest-900">{message}</p> : null}
+          <Button className="mt-5 w-full bg-gold-300 text-forest-900 hover:bg-gold-500" onClick={submitOrder}>
+            <Send size={16} />
+            Submit order
+          </Button>
+        </aside>
+      </div>
+
+      <section className="mt-5 min-w-0 space-y-5 sm:mt-6">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="relative w-full xl:max-w-md">
             <Search className="absolute left-3 top-3 text-stone-400" size={17} />
             <Input className="pl-10" placeholder="Search menu items" value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
-          <div className="hide-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+          <div className="hide-scrollbar -mx-3 flex min-w-0 flex-1 gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
             {["All", ...categories.map((category) => category.name)].map((category) => (
               <Button key={category} variant={activeCategory === category ? "primary" : "ghost"} className="h-10 min-h-10 whitespace-nowrap px-4" onClick={() => setActiveCategory(category)}>
                 {category}
@@ -199,7 +233,7 @@ function WaiterOrders() {
             ))}
           </div>
         </div>
-        <div className="grid w-full gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
+        <div className="grid w-full gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
           {visibleItems.map((item) => (
             <MenuCard
               key={item._id}
@@ -211,35 +245,6 @@ function WaiterOrders() {
           ))}
         </div>
       </section>
-      <aside className="h-fit rounded-[8px] bg-forest-900 p-4 text-white shadow-glow sm:p-5 lg:sticky lg:top-20">
-        <p className="text-xs font-black uppercase text-gold-300">Current cart</p>
-        <h2 className="mt-1 text-2xl font-black">Table {selectedTable?.number || "-"}</h2>
-        <div className="mt-5 space-y-3">
-          {cart.map((line) => (
-            <div key={line.item._id} className="rounded-[8px] bg-white/10 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="break-words font-black">{line.item.name}</p>
-                  <p className="text-sm text-white/70">{formatMoney(line.item.price)}</p>
-                </div>
-                <QuantityStepper value={line.quantity} onChange={(value) => setQuantity(line.item._id, value)} />
-              </div>
-            </div>
-          ))}
-          {!cart.length ? <p className="rounded-[8px] bg-white/10 p-4 text-sm font-bold text-white/74">Add dishes from the menu to create an order.</p> : null}
-        </div>
-        <textarea className="mt-4 min-h-24 w-full rounded-[8px] border border-white/10 bg-white/10 p-3 text-sm font-semibold text-white outline-none placeholder:text-white/45" placeholder="Customer notes" value={customerNotes} onChange={(event) => setCustomerNotes(event.target.value)} />
-        <div className="mt-4 space-y-2 text-sm">
-          <div className="flex justify-between"><span>Subtotal</span><strong>{formatMoney(subtotal)}</strong></div>
-          <div className="flex justify-between"><span>GST 5%</span><strong>{formatMoney(gst)}</strong></div>
-          <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong>{formatMoney(total)}</strong></div>
-        </div>
-        {message ? <p className="mt-4 rounded-[8px] bg-gold-300 p-3 text-sm font-black text-forest-900">{message}</p> : null}
-        <Button className="mt-5 w-full bg-gold-300 text-forest-900 hover:bg-gold-500" onClick={submitOrder}>
-          <Send size={16} />
-          Submit order
-        </Button>
-      </aside>
     </main>
   );
 }
