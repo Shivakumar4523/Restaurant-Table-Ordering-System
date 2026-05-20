@@ -179,7 +179,7 @@ function WaiterOrders() {
   }
 
   return (
-    <main className="w-full max-w-none px-2 py-4 sm:px-4 sm:py-6 lg:px-5">
+    <main className="w-full max-w-none px-0 py-4 sm:py-6">
       <div className="grid w-full gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <section className="min-w-0 space-y-5 sm:space-y-6">
           <div>
@@ -219,13 +219,13 @@ function WaiterOrders() {
         </aside>
       </div>
 
-      <section className="mt-5 min-w-0 space-y-5 sm:mt-6">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative w-full xl:max-w-md">
+      <section className="mt-5 w-full min-w-0 max-w-none space-y-5 sm:mt-6">
+        <div className="grid w-full min-w-0 gap-3 lg:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)] lg:items-center">
+          <div className="relative w-full min-w-0">
             <Search className="absolute left-3 top-3 text-stone-400" size={17} />
             <Input className="pl-10" placeholder="Search menu items" value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
-          <div className="hide-scrollbar -mx-3 flex min-w-0 flex-1 gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+          <div className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">
             {["All", ...categories.map((category) => category.name)].map((category) => (
               <Button key={category} variant={activeCategory === category ? "primary" : "ghost"} className="h-10 min-h-10 whitespace-nowrap px-4" onClick={() => setActiveCategory(category)}>
                 {category}
@@ -233,7 +233,7 @@ function WaiterOrders() {
             ))}
           </div>
         </div>
-        <div className="grid w-full gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {visibleItems.map((item) => (
             <MenuCard
               key={item._id}

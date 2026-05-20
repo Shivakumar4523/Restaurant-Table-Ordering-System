@@ -25,22 +25,22 @@ export function Menu() {
   }, [activeCategory, items, query]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <main className="w-full max-w-none px-0 py-10">
+      <div className="grid w-full gap-4 px-4 md:grid-cols-[minmax(0,1fr)_minmax(18rem,32rem)] md:items-end sm:px-6 lg:px-8">
         <div>
           <p className="text-xs font-black uppercase text-gold-700">Public menu</p>
           <h1 className="mt-2 text-4xl font-black text-ink">Royal Spice Menu</h1>
         </div>
-        <Input className="max-w-md" placeholder="Search menu items" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <Input placeholder="Search menu items" value={query} onChange={(event) => setQuery(event.target.value)} />
       </div>
-      <div className="mt-6 flex gap-2 overflow-x-auto pb-2">
+      <div className="mt-6 flex gap-2 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8">
         {["All", ...categories.map((category) => category.name)].map((category) => (
           <Button key={category} variant={activeCategory === category ? "primary" : "ghost"} className="h-10 min-h-10 whitespace-nowrap px-4" onClick={() => setActiveCategory(category)}>
             {category}
           </Button>
         ))}
       </div>
-      <div className="mt-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr))]">
+      <div className="mt-6 grid w-full min-w-0 grid-cols-1 gap-4 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8 2xl:grid-cols-4">
         {visible.map((item) => (
           <MenuCard key={item._id} item={item} />
         ))}
