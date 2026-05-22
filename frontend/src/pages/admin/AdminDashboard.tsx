@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StatCard } from "@/components/ui/StatCard";
 import { TableStatusPill } from "@/components/ui/TableStatusPill";
+import { useSocket } from "@/context/SocketContext";
 import {
   deleteCoupon,
   deleteMenuItem,
@@ -34,11 +35,54 @@ type Tab = "overview" | "menu" | "categories" | "offers" | "tables" | "employees
 
 const tabs: Tab[] = ["overview", "menu", "categories", "offers", "tables", "employees"];
 
+function upsertById<T extends { _id: string }>(records: T[], nextRecord: T) {
+  return records.some((record) => record._id === nextRecord._id)
+    ? records.map((record) => (record._id === nextRecord._id ? nextRecord : record))
+    : [nextRecord, ...records];
+}
+
+function removeById<T extends { _id: string }>(records: T[], id: string) {
+  return records.filter((record) => record._id !== id);
+}
+
+function sortMenuItems(records: MenuItem[]) {
+  return [...records].sort((a, b) => {
+    if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) return Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+    return a.categoryName.localeCompare(b.categoryName) || a.name.localeCompare(b.name);
+  });
+}
+
+function sortCategories(records: Category[]) {
+  return [...records].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || a.name.localeCompare(b.name));
+}
+
+function sortCoupons(records: Coupon[]) {
+  return [...records].sort((a, b) => Number(b.active) - Number(a.active) || Number(a.minOrder || 0) - Number(b.minOrder || 0) || a.code.localeCompare(b.code));
+}
+
+function sortTables(records: RestaurantTable[]) {
+  return [...records].sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+}
+
+function userId(user: User) {
+  return user.id || user._id || user.email;
+}
+
+function upsertEmployee(records: User[], nextRecord: User) {
+  const nextId = userId(nextRecord);
+  const nextRecords = records.some((record) => userId(record) === nextId)
+    ? records.map((record) => (userId(record) === nextId ? nextRecord : record))
+    : [nextRecord, ...records];
+
+  return nextRecords.sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
+}
+
 function parseTab(value: string | null): Tab {
   return tabs.includes(value as Tab) ? (value as Tab) : "overview";
 }
 
 export function AdminDashboard() {
+  const { socket } = useSocket();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => parseTab(searchParams.get("tab")));
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -50,6 +94,7 @@ export function AdminDashboard() {
   const [report, setReport] = useState<SalesReport | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savingMenuItem, setSavingMenuItem] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -58,7 +103,7 @@ export function AdminDashboard() {
     try {
       const [categoryData, menuData, couponData, tableData, employeeData, reportData] = await Promise.all([
         getCategories(),
-        getMenuItems({ available: false }),
+        getMenuItems(),
         getCoupons(),
         getTables(),
         getEmployees(),
@@ -85,6 +130,20 @@ export function AdminDashboard() {
     setTab(parseTab(searchParams.get("tab")));
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const syncMenuItem = (item: MenuItem) => {
+      setItems((current) => (item.isAvailable === false ? removeById(current, item._id) : sortMenuItems(upsertById(current, item))));
+    };
+
+    socket.on("menu-item:updated", syncMenuItem);
+
+    return () => {
+      socket.off("menu-item:updated", syncMenuItem);
+    };
+  }, [socket]);
+
   const categoryOptions = useMemo(() => categories.map((category) => category.name), [categories]);
 
   function selectTab(nextTab: Tab) {
@@ -94,10 +153,13 @@ export function AdminDashboard() {
 
   async function onMenuSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (savingMenuItem) return;
+
     const form = new FormData(event.currentTarget);
     const isEditing = Boolean(editingMenuItem);
+    const previousItems = items;
 
-    await saveMenuItem({
+    const payload = {
       name: String(form.get("name")),
       description: String(form.get("description")),
       categoryName: String(form.get("categoryName")),
@@ -106,24 +168,39 @@ export function AdminDashboard() {
       prepTime: Number(form.get("prepTime") || 15),
       isFeatured: form.get("isFeatured") === "on",
       isAvailable: true
-    }, editingMenuItem?._id);
-    event.currentTarget.reset();
-    setEditingMenuItem(null);
-    setMessage(isEditing ? "Menu item updated." : "Menu item saved.");
-    setItems(await getMenuItems({ available: false }));
+    };
+
+    if (editingMenuItem) {
+      setItems((current) => sortMenuItems(upsertById(current, { ...editingMenuItem, ...payload })));
+    }
+
+    setSavingMenuItem(true);
+    try {
+      const savedItem = await saveMenuItem(payload, editingMenuItem?._id);
+
+      event.currentTarget.reset();
+      setEditingMenuItem(null);
+      setMessage(isEditing ? "Menu item updated." : "Menu item saved.");
+      setItems((current) => sortMenuItems(upsertById(current, savedItem)));
+    } catch (error) {
+      if (editingMenuItem) setItems(previousItems);
+      setMessage(error instanceof Error ? error.message : "Unable to save menu item.");
+    } finally {
+      setSavingMenuItem(false);
+    }
   }
 
   async function onCategorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    await saveCategory({
+    const savedCategory = await saveCategory({
       name: String(form.get("name")),
       description: String(form.get("description")),
       sortOrder: Number(form.get("sortOrder") || 0)
     });
     event.currentTarget.reset();
     setMessage("Category saved.");
-    setCategories(await getCategories());
+    setCategories((current) => sortCategories(upsertById(current, savedCategory)));
   }
 
   async function onCouponSubmit(event: FormEvent<HTMLFormElement>) {
@@ -131,7 +208,7 @@ export function AdminDashboard() {
     const form = new FormData(event.currentTarget);
     const expiresAt = String(form.get("expiresAt") || "");
 
-    await saveCoupon({
+    const savedCoupon = await saveCoupon({
       code: String(form.get("code")),
       type: String(form.get("type")) as Coupon["type"],
       value: Number(form.get("value")),
@@ -141,26 +218,26 @@ export function AdminDashboard() {
     });
     event.currentTarget.reset();
     setMessage("Offer saved.");
-    setCoupons(await getCoupons());
+    setCoupons((current) => sortCoupons(upsertById(current, savedCoupon)));
   }
 
   async function onTableSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    await saveTable({
+    const savedTable = await saveTable({
       number: String(form.get("number")),
       capacity: Number(form.get("capacity")),
       section: String(form.get("section"))
     });
     event.currentTarget.reset();
     setMessage("Table saved.");
-    setTables(await getTables());
+    setTables((current) => sortTables(upsertById(current, savedTable)));
   }
 
   async function onEmployeeSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    await saveEmployee({
+    const savedEmployee = await saveEmployee({
       name: String(form.get("name")),
       email: String(form.get("email")),
       phone: String(form.get("phone")),
@@ -171,19 +248,19 @@ export function AdminDashboard() {
     });
     event.currentTarget.reset();
     setMessage("Employee saved.");
-    setEmployees(await getEmployees());
+    setEmployees((current) => upsertEmployee(current, savedEmployee));
   }
 
   async function removeMenuItem(id: string) {
     await deleteMenuItem(id);
     if (editingMenuItem?._id === id) setEditingMenuItem(null);
-    setItems(await getMenuItems({ available: false }));
+    setItems((current) => removeById(current, id));
   }
 
   async function toggleCoupon(coupon: Coupon) {
-    await saveCoupon({ active: !coupon.active }, coupon._id);
+    const savedCoupon = await saveCoupon({ active: !coupon.active }, coupon._id);
     setMessage(`${coupon.code} ${coupon.active ? "deactivated" : "activated"}.`);
-    setCoupons(await getCoupons());
+    setCoupons((current) => sortCoupons(upsertById(current, savedCoupon)));
   }
 
   async function removeCoupon(coupon: Coupon) {
@@ -191,7 +268,7 @@ export function AdminDashboard() {
 
     await deleteCoupon(coupon._id);
     setMessage(`${coupon.code} removed.`);
-    setCoupons(await getCoupons());
+    setCoupons((current) => removeById(current, coupon._id));
   }
 
   async function removeTable(table: RestaurantTable) {
@@ -200,7 +277,7 @@ export function AdminDashboard() {
 
     await deleteTable(table._id);
     setMessage(`${label} removed.`);
-    setTables(await getTables());
+    setTables((current) => removeById(current, table._id));
   }
 
   async function removeEmployee(employee: User) {
@@ -214,7 +291,7 @@ export function AdminDashboard() {
 
     await deleteEmployee(employeeId);
     setMessage(`${employee.name} removed.`);
-    setEmployees(await getEmployees());
+    setEmployees((current) => current.filter((record) => userId(record) !== employeeId));
   }
 
   return (
@@ -305,7 +382,10 @@ export function AdminDashboard() {
                 <option value="non-veg">Non-veg</option>
               </select>
               <label className="flex items-center gap-2 text-sm font-black"><input type="checkbox" name="isFeatured" defaultChecked={Boolean(editingMenuItem?.isFeatured)} /> Featured</label>
-              <Button>{editingMenuItem ? <Pencil size={16} /> : <Plus size={16} />} {editingMenuItem ? "Update item" : "Save item"}</Button>
+              <Button disabled={savingMenuItem}>
+                {editingMenuItem ? <Pencil size={16} /> : <Plus size={16} />}
+                {savingMenuItem ? (editingMenuItem ? "Updating..." : "Saving...") : editingMenuItem ? "Update item" : "Save item"}
+              </Button>
               {editingMenuItem ? (
                 <Button type="button" variant="ghost" onClick={() => setEditingMenuItem(null)}>Cancel edit</Button>
               ) : null}

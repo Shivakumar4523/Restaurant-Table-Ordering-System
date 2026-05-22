@@ -53,6 +53,7 @@ export async function createMenuItem(req, res, next) {
       isAvailable: req.body.isAvailable !== false,
       isFeatured: Boolean(req.body.isFeatured)
     });
+    req.app.get("io")?.emit("menu-item:updated", menuItem);
     res.status(201).json({ menuItem });
   } catch (error) {
     next(error);
@@ -74,6 +75,7 @@ export async function updateMenuItem(req, res, next) {
 
     const menuItem = await MenuItem.findByIdAndUpdate(req.params.id, patch, { new: true }).populate("category");
     if (!menuItem) return res.status(404).json({ message: "Menu item not found" });
+    req.app.get("io")?.emit("menu-item:updated", menuItem);
     res.json({ menuItem });
   } catch (error) {
     next(error);
@@ -84,6 +86,7 @@ export async function deleteMenuItem(req, res, next) {
   try {
     const menuItem = await MenuItem.findByIdAndUpdate(req.params.id, { isAvailable: false }, { new: true });
     if (!menuItem) return res.status(404).json({ message: "Menu item not found" });
+    req.app.get("io")?.emit("menu-item:updated", menuItem);
     res.json({ message: "Menu item archived" });
   } catch (error) {
     next(error);

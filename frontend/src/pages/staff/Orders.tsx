@@ -69,6 +69,19 @@ function mergeActiveOrder(current: Order[], order: Order) {
   return [order, ...current];
 }
 
+function mergeMenuItem(current: MenuItem[], item: MenuItem) {
+  if (item.isAvailable === false) return current.filter((record) => record._id !== item._id);
+
+  const nextItems = current.some((record) => record._id === item._id)
+    ? current.map((record) => (record._id === item._id ? item : record))
+    : [item, ...current];
+
+  return nextItems.sort((a, b) => {
+    if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) return Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+    return a.categoryName.localeCompare(b.categoryName) || a.name.localeCompare(b.name);
+  });
+}
+
 function buildBillOrder(bill: Bill): Order {
   return {
     ...bill.order,
@@ -106,6 +119,7 @@ function WaiterOrders() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerNotes, setCustomerNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     Promise.all([getTables(), getCategories(), getMenuItems()]).then(([tableData, categoryData, menuData]) => {
@@ -128,6 +142,24 @@ function WaiterOrders() {
 
     return () => {
       socket.off("table:updated", handleTableUpdate);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const syncMenuItem = (item: MenuItem) => {
+      setItems((current) => mergeMenuItem(current, item));
+      setCart((current) => {
+        if (item.isAvailable === false) return current.filter((line) => line.item._id !== item._id);
+        return current.map((line) => (line.item._id === item._id ? { ...line, item } : line));
+      });
+    };
+
+    socket.on("menu-item:updated", syncMenuItem);
+
+    return () => {
+      socket.off("menu-item:updated", syncMenuItem);
     };
   }, [socket]);
 
@@ -161,21 +193,41 @@ function WaiterOrders() {
   }
 
   async function submitOrder() {
+    if (submitting) return;
+
     if (!selectedTable || !cart.length) {
       setMessage("Select a table and add at least one dish.");
       return;
     }
 
-    await submitTableOrder({
-      tableId: selectedTable._id,
-      customerNotes,
-      items: cart.map((line) => ({ menuItem: line.item._id, quantity: line.quantity, note: line.note }))
-    });
+    const previousTables = tables;
+    const previousSelectedTable = selectedTable;
+    const optimisticTable = { ...selectedTable, status: "ordered" as RestaurantTable["status"] };
 
-    setCart([]);
-    setCustomerNotes("");
-    setMessage(`Order sent for table ${selectedTable.number}.`);
-    setTables(await getTables());
+    setSubmitting(true);
+    setTables((current) => current.map((table) => (table._id === optimisticTable._id ? optimisticTable : table)));
+    setSelectedTable(optimisticTable);
+
+    try {
+      const order = await submitTableOrder({
+        tableId: selectedTable._id,
+        customerNotes,
+        items: cart.map((line) => ({ menuItem: line.item._id, quantity: line.quantity, note: line.note }))
+      });
+      const updatedTable = order.table || optimisticTable;
+
+      setTables((current) => current.map((table) => (table._id === updatedTable._id ? updatedTable : table)));
+      setSelectedTable((current) => (current?._id === updatedTable._id ? updatedTable : current));
+      setCart([]);
+      setCustomerNotes("");
+      setMessage(`Order sent for table ${updatedTable.number}.`);
+    } catch (error) {
+      setTables(previousTables);
+      setSelectedTable(previousSelectedTable);
+      setMessage(getErrorMessage(error, "Unable to submit order."));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -212,9 +264,9 @@ function WaiterOrders() {
             <div className="flex justify-between text-lg"><span className="font-black">Total</span><strong>{formatMoney(total)}</strong></div>
           </div>
           {message ? <p className="mt-4 rounded-[8px] bg-gold-300 p-3 text-sm font-black text-forest-900">{message}</p> : null}
-          <Button className="mt-5 w-full bg-gold-300 text-forest-900 hover:bg-gold-500" onClick={submitOrder}>
+          <Button className="mt-5 w-full bg-gold-300 text-forest-900 hover:bg-gold-500" onClick={submitOrder} disabled={submitting}>
             <Send size={16} />
-            Submit order
+            {submitting ? "Submitting..." : "Submit order"}
           </Button>
         </aside>
       </div>

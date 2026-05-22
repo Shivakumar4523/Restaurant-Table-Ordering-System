@@ -12,11 +12,13 @@ const nextStatuses: Record<string, string[]> = {
 export function OrderCard({
   order,
   onStatus,
-  onBill
+  onBill,
+  busy = false
 }: {
   order: Order;
   onStatus?: (order: Order, status: string) => void;
   onBill?: (order: Order) => void;
+  busy?: boolean;
 }) {
   return (
     <article className="min-w-0 rounded-[8px] border border-black/10 bg-white p-4 shadow-sm">
@@ -39,12 +41,12 @@ export function OrderCard({
       {order.customerNotes ? <p className="mt-3 rounded-[8px] bg-gold-100 p-3 text-sm font-bold text-ink">Note: {order.customerNotes}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {(nextStatuses[order.status] || []).map((status) => (
-          <Button key={status} className="h-10 min-h-10 px-4 capitalize" onClick={() => onStatus?.(order, status)}>
+          <Button key={status} className="h-10 min-h-10 px-4 capitalize" onClick={() => onStatus?.(order, status)} disabled={busy}>
             {status}
           </Button>
         ))}
         {onBill ? (
-          <Button variant="secondary" className="h-10 min-h-10 px-4" onClick={() => onBill(order)}>
+          <Button variant="secondary" className="h-10 min-h-10 px-4" onClick={() => onBill(order)} disabled={busy}>
             Generate bill
           </Button>
         ) : null}

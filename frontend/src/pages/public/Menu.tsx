@@ -2,10 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import { MenuCard } from "@/components/menu/MenuCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useSocket } from "@/context/SocketContext";
 import { formatMoney } from "@/lib/constants";
 import { getActiveCoupons, getCategories, getMenuItems, type Category, type Coupon, type MenuItem } from "@/lib/api";
 
+function mergeMenuItem(records: MenuItem[], item: MenuItem) {
+  if (item.isAvailable === false) return records.filter((record) => record._id !== item._id);
+
+  const nextRecords = records.some((record) => record._id === item._id)
+    ? records.map((record) => (record._id === item._id ? item : record))
+    : [item, ...records];
+
+  return nextRecords.sort((a, b) => {
+    if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) return Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+    return a.categoryName.localeCompare(b.categoryName) || a.name.localeCompare(b.name);
+  });
+}
+
 export function Menu() {
+  const { socket } = useSocket();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -17,6 +32,17 @@ export function Menu() {
     getMenuItems().then(setItems);
     getActiveCoupons().then(setCoupons).catch(() => setCoupons([]));
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const syncMenuItem = (item: MenuItem) => setItems((current) => mergeMenuItem(current, item));
+    socket.on("menu-item:updated", syncMenuItem);
+
+    return () => {
+      socket.off("menu-item:updated", syncMenuItem);
+    };
+  }, [socket]);
 
   const visible = useMemo(() => {
     const normalized = query.toLowerCase();

@@ -7,27 +7,46 @@ import { useSocket } from "@/context/SocketContext";
 export function KitchenDashboard() {
   const { socket } = useSocket();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    getActiveOrders().then(setOrders);
+    getActiveOrders().then(setOrders).catch((error) => setMessage(error instanceof Error ? error.message : "Unable to load kitchen orders."));
   }, []);
 
   useEffect(() => {
     if (!socket) return;
 
+    const syncCreatedOrder = (order: Order) => setOrders((current) => [order, ...current.filter((item) => item._id !== order._id)]);
+    const syncUpdatedOrder = (order: Order) => setOrders((current) => current.map((item) => (item._id === order._id ? order : item)).filter((item) => item.paymentStatus !== "paid"));
+
     socket.emit("join:kitchen");
-    socket.on("order:created", (order: Order) => setOrders((current) => [order, ...current.filter((item) => item._id !== order._id)]));
-    socket.on("order:updated", (order: Order) => setOrders((current) => current.map((item) => (item._id === order._id ? order : item)).filter((item) => item.paymentStatus !== "paid")));
+    socket.on("order:created", syncCreatedOrder);
+    socket.on("order:updated", syncUpdatedOrder);
 
     return () => {
-      socket.off("order:created");
-      socket.off("order:updated");
+      socket.off("order:created", syncCreatedOrder);
+      socket.off("order:updated", syncUpdatedOrder);
     };
   }, [socket]);
 
   async function changeStatus(order: Order, status: string) {
-    const updated = await updateOrderStatus(order._id, status);
-    setOrders((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+    const previousOrders = orders;
+    const optimisticOrder = { ...order, status: status as Order["status"] };
+
+    setUpdatingOrderId(order._id);
+    setMessage("");
+    setOrders((current) => current.map((item) => (item._id === order._id ? optimisticOrder : item)));
+
+    try {
+      const updated = await updateOrderStatus(order._id, status);
+      setOrders((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+    } catch (error) {
+      setOrders(previousOrders);
+      setMessage(error instanceof Error ? error.message : "Unable to update order.");
+    } finally {
+      setUpdatingOrderId(null);
+    }
   }
 
   return (
@@ -44,9 +63,10 @@ export function KitchenDashboard() {
       </div>
       <div className="mt-6 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {orders.map((order) => (
-          <OrderCard key={order._id} order={order} onStatus={changeStatus} />
+          <OrderCard key={order._id} order={order} onStatus={changeStatus} busy={updatingOrderId === order._id} />
         ))}
       </div>
+      {message ? <p className="mt-4 rounded-[8px] bg-gold-100 p-3 text-sm font-black text-ink">{message}</p> : null}
       {!orders.length ? <p className="mt-8 w-full max-w-full break-words rounded-[8px] border border-dashed border-black/20 p-8 text-center font-bold text-stone-600">No active kitchen orders yet.</p> : null}
     </main>
   );
