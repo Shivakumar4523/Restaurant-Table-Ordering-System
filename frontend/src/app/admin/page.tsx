@@ -38,7 +38,8 @@ export default function AdminPage() {
     event.preventDefault();
     if (!token) return;
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     form.set("isFeatured", form.get("isFeatured") ? "true" : "false");
     form.set("isAvailable", "true");
 
@@ -46,7 +47,7 @@ export default function AdminPage() {
       await saveFoodForm(token, form, editing?._id);
       setMessage(editing ? "Dish updated." : "Dish added.");
       setEditing(null);
-      event.currentTarget.reset();
+      formElement.reset();
       setFoods(await getFoods());
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save dish");

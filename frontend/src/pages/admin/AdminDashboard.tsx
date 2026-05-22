@@ -155,7 +155,8 @@ export function AdminDashboard() {
     event.preventDefault();
     if (savingMenuItem) return;
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const isEditing = Boolean(editingMenuItem);
     const previousItems = items;
 
@@ -178,7 +179,7 @@ export function AdminDashboard() {
     try {
       const savedItem = await saveMenuItem(payload, editingMenuItem?._id);
 
-      event.currentTarget.reset();
+      formElement.reset();
       setEditingMenuItem(null);
       setMessage(isEditing ? "Menu item updated." : "Menu item saved.");
       setItems((current) => sortMenuItems(upsertById(current, savedItem)));
@@ -192,20 +193,22 @@ export function AdminDashboard() {
 
   async function onCategorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const savedCategory = await saveCategory({
       name: String(form.get("name")),
       description: String(form.get("description")),
       sortOrder: Number(form.get("sortOrder") || 0)
     });
-    event.currentTarget.reset();
+    formElement.reset();
     setMessage("Category saved.");
     setCategories((current) => sortCategories(upsertById(current, savedCategory)));
   }
 
   async function onCouponSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const expiresAt = String(form.get("expiresAt") || "");
 
     const savedCoupon = await saveCoupon({
@@ -216,27 +219,29 @@ export function AdminDashboard() {
       active: form.get("active") === "on",
       expiresAt: expiresAt || undefined
     });
-    event.currentTarget.reset();
+    formElement.reset();
     setMessage("Offer saved.");
     setCoupons((current) => sortCoupons(upsertById(current, savedCoupon)));
   }
 
   async function onTableSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const savedTable = await saveTable({
       number: String(form.get("number")),
       capacity: Number(form.get("capacity")),
       section: String(form.get("section"))
     });
-    event.currentTarget.reset();
+    formElement.reset();
     setMessage("Table saved.");
     setTables((current) => sortTables(upsertById(current, savedTable)));
   }
 
   async function onEmployeeSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const savedEmployee = await saveEmployee({
       name: String(form.get("name")),
       email: String(form.get("email")),
@@ -246,7 +251,7 @@ export function AdminDashboard() {
       employeeCode: String(form.get("employeeCode")),
       isActive: true
     });
-    event.currentTarget.reset();
+    formElement.reset();
     setMessage("Employee saved.");
     setEmployees((current) => upsertEmployee(current, savedEmployee));
   }

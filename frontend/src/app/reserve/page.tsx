@@ -9,13 +9,14 @@ export default function ReservePage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const payload = Object.fromEntries(form.entries()) as Record<string, string>;
 
     try {
       await createReservation({ ...payload, guests: Number(payload.guests) });
       setMessage("Reservation request sent. The restaurant will confirm shortly.");
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       setMessage(error instanceof Error ? `${error.message}. Demo request captured.` : "Demo request captured.");
     }
