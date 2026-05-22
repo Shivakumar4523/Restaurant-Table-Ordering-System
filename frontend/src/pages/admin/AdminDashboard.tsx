@@ -1,24 +1,28 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StatCard } from "@/components/ui/StatCard";
 import { TableStatusPill } from "@/components/ui/TableStatusPill";
 import {
+  deleteCoupon,
   deleteMenuItem,
   deleteEmployee,
   deleteTable,
   getCategories,
+  getCoupons,
   getEmployees,
   getMenuItems,
   getSalesReport,
   getTables,
   saveCategory,
+  saveCoupon,
   saveEmployee,
   saveMenuItem,
   saveTable,
   type Category,
+  type Coupon,
   type MenuItem,
   type RestaurantTable,
   type SalesReport,
@@ -26,9 +30,9 @@ import {
 } from "@/lib/api";
 import { formatMoney } from "@/lib/constants";
 
-type Tab = "overview" | "menu" | "categories" | "tables" | "employees";
+type Tab = "overview" | "menu" | "categories" | "offers" | "tables" | "employees";
 
-const tabs: Tab[] = ["overview", "menu", "categories", "tables", "employees"];
+const tabs: Tab[] = ["overview", "menu", "categories", "offers", "tables", "employees"];
 
 function parseTab(value: string | null): Tab {
   return tabs.includes(value as Tab) ? (value as Tab) : "overview";
@@ -38,7 +42,9 @@ export function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => parseTab(searchParams.get("tab")));
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
   const [report, setReport] = useState<SalesReport | null>(null);
@@ -50,15 +56,17 @@ export function AdminDashboard() {
     setMessage("");
 
     try {
-      const [categoryData, menuData, tableData, employeeData, reportData] = await Promise.all([
+      const [categoryData, menuData, couponData, tableData, employeeData, reportData] = await Promise.all([
         getCategories(),
         getMenuItems({ available: false }),
+        getCoupons(),
         getTables(),
         getEmployees(),
         getSalesReport().catch(() => null)
       ]);
       setCategories(categoryData);
       setItems(menuData);
+      setCoupons(couponData);
       setTables(tableData);
       setEmployees(employeeData);
       setReport(reportData);
@@ -87,6 +95,8 @@ export function AdminDashboard() {
   async function onMenuSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const isEditing = Boolean(editingMenuItem);
+
     await saveMenuItem({
       name: String(form.get("name")),
       description: String(form.get("description")),
@@ -96,9 +106,10 @@ export function AdminDashboard() {
       prepTime: Number(form.get("prepTime") || 15),
       isFeatured: form.get("isFeatured") === "on",
       isAvailable: true
-    });
+    }, editingMenuItem?._id);
     event.currentTarget.reset();
-    setMessage("Menu item saved.");
+    setEditingMenuItem(null);
+    setMessage(isEditing ? "Menu item updated." : "Menu item saved.");
     setItems(await getMenuItems({ available: false }));
   }
 
@@ -113,6 +124,24 @@ export function AdminDashboard() {
     event.currentTarget.reset();
     setMessage("Category saved.");
     setCategories(await getCategories());
+  }
+
+  async function onCouponSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const expiresAt = String(form.get("expiresAt") || "");
+
+    await saveCoupon({
+      code: String(form.get("code")),
+      type: String(form.get("type")) as Coupon["type"],
+      value: Number(form.get("value")),
+      minOrder: Number(form.get("minOrder") || 0),
+      active: form.get("active") === "on",
+      expiresAt: expiresAt || undefined
+    });
+    event.currentTarget.reset();
+    setMessage("Offer saved.");
+    setCoupons(await getCoupons());
   }
 
   async function onTableSubmit(event: FormEvent<HTMLFormElement>) {
@@ -147,7 +176,22 @@ export function AdminDashboard() {
 
   async function removeMenuItem(id: string) {
     await deleteMenuItem(id);
+    if (editingMenuItem?._id === id) setEditingMenuItem(null);
     setItems(await getMenuItems({ available: false }));
+  }
+
+  async function toggleCoupon(coupon: Coupon) {
+    await saveCoupon({ active: !coupon.active }, coupon._id);
+    setMessage(`${coupon.code} ${coupon.active ? "deactivated" : "activated"}.`);
+    setCoupons(await getCoupons());
+  }
+
+  async function removeCoupon(coupon: Coupon) {
+    if (!window.confirm(`Remove offer ${coupon.code}?`)) return;
+
+    await deleteCoupon(coupon._id);
+    setMessage(`${coupon.code} removed.`);
+    setCoupons(await getCoupons());
   }
 
   async function removeTable(table: RestaurantTable) {
@@ -237,24 +281,34 @@ export function AdminDashboard() {
 
       {tab === "menu" ? (
         <section className="mt-6 grid gap-5 xl:grid-cols-[380px_1fr]">
-          <form onSubmit={onMenuSubmit} className="glass h-fit rounded-[8px] p-5">
-            <h3 className="text-xl font-black text-ink">Add menu item</h3>
+          <form key={editingMenuItem?._id || "new-menu-item"} onSubmit={onMenuSubmit} className="glass h-fit rounded-[8px] p-5">
+            <h3 className="text-xl font-black text-ink">{editingMenuItem ? "Edit menu item" : "Add menu item"}</h3>
             <div className="mt-4 grid gap-3">
-              <Input name="name" placeholder="Dish name" required />
-              <textarea name="description" className="min-h-24 rounded-[8px] border border-black/10 bg-white p-3 text-sm font-semibold outline-none" placeholder="Description" required />
-              <select name="categoryName" className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold">
+              <Input name="name" placeholder="Dish name" defaultValue={editingMenuItem?.name || ""} required />
+              <textarea
+                name="description"
+                className="min-h-24 rounded-[8px] border border-black/10 bg-white p-3 text-sm font-semibold outline-none"
+                placeholder="Description"
+                defaultValue={editingMenuItem?.description || ""}
+                required
+              />
+              <select name="categoryName" defaultValue={editingMenuItem?.categoryName || categoryOptions[0]} className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold">
+                {editingMenuItem?.categoryName && !categoryOptions.includes(editingMenuItem.categoryName) ? <option>{editingMenuItem.categoryName}</option> : null}
                 {categoryOptions.map((category) => <option key={category}>{category}</option>)}
               </select>
               <div className="grid grid-cols-2 gap-3">
-                <Input name="price" type="number" placeholder="Price" required />
-                <Input name="prepTime" type="number" placeholder="Prep min" defaultValue={15} />
+                <Input name="price" type="number" min={0} placeholder="Price" defaultValue={editingMenuItem?.price ?? ""} required />
+                <Input name="prepTime" type="number" min={1} placeholder="Prep min" defaultValue={editingMenuItem?.prepTime || 15} />
               </div>
-              <select name="foodType" className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold">
+              <select name="foodType" defaultValue={editingMenuItem?.foodType || "veg"} className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold">
                 <option value="veg">Veg</option>
                 <option value="non-veg">Non-veg</option>
               </select>
-              <label className="flex items-center gap-2 text-sm font-black"><input type="checkbox" name="isFeatured" /> Featured</label>
-              <Button><Plus size={16} /> Save item</Button>
+              <label className="flex items-center gap-2 text-sm font-black"><input type="checkbox" name="isFeatured" defaultChecked={Boolean(editingMenuItem?.isFeatured)} /> Featured</label>
+              <Button>{editingMenuItem ? <Pencil size={16} /> : <Plus size={16} />} {editingMenuItem ? "Update item" : "Save item"}</Button>
+              {editingMenuItem ? (
+                <Button type="button" variant="ghost" onClick={() => setEditingMenuItem(null)}>Cancel edit</Button>
+              ) : null}
             </div>
           </form>
           <div className="grid gap-3 md:grid-cols-2">
@@ -266,7 +320,19 @@ export function AdminDashboard() {
                     <h4 className="mt-1 font-black text-ink">{item.name}</h4>
                     <p className="mt-1 text-sm text-stone-600">{item.foodType} | {formatMoney(item.price)}</p>
                   </div>
-                  <Button variant="danger" className="h-10 min-h-10 px-3" onClick={() => removeMenuItem(item._id)}><Trash2 size={15} /></Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-10 min-h-10 px-3"
+                      onClick={() => setEditingMenuItem(item)}
+                      aria-label={`Edit ${item.name}`}
+                      title={`Edit ${item.name}`}
+                    >
+                      <Pencil size={15} />
+                    </Button>
+                    <Button type="button" variant="danger" className="h-10 min-h-10 px-3" onClick={() => removeMenuItem(item._id)}><Trash2 size={15} /></Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -292,6 +358,58 @@ export function AdminDashboard() {
                 <p className="mt-1 text-sm text-stone-600">{category.description}</p>
               </div>
             ))}
+          </div>
+        </section>
+      ) : null}
+
+      {tab === "offers" ? (
+        <section className="mt-6 grid gap-5 lg:grid-cols-[360px_1fr]">
+          <form onSubmit={onCouponSubmit} className="glass h-fit rounded-[8px] p-5">
+            <h3 className="text-xl font-black text-ink">Add offer</h3>
+            <div className="mt-4 grid gap-3">
+              <Input name="code" placeholder="Coupon code" required />
+              <select name="type" className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold">
+                <option value="percent">Percent off</option>
+                <option value="flat">Flat amount off</option>
+              </select>
+              <div className="grid grid-cols-2 gap-3">
+                <Input name="value" type="number" min={1} placeholder="Value" required />
+                <Input name="minOrder" type="number" min={0} placeholder="Min order" defaultValue={0} />
+              </div>
+              <Input name="expiresAt" type="date" placeholder="Expiry date" />
+              <label className="flex items-center gap-2 text-sm font-black"><input type="checkbox" name="active" defaultChecked /> Active</label>
+              <Button>Save offer</Button>
+            </div>
+          </form>
+          <div className="grid gap-3 md:grid-cols-2">
+            {coupons.map((coupon) => (
+              <div key={coupon._id} className="rounded-[8px] border border-black/10 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-gold-700">{coupon.active ? "Active offer" : "Inactive offer"}</p>
+                    <p className="mt-1 text-xl font-black text-ink">{coupon.code}</p>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {coupon.type === "percent" ? `${coupon.value}% off` : `${formatMoney(coupon.value)} off`} over {formatMoney(coupon.minOrder)}
+                    </p>
+                    {coupon.expiresAt ? <p className="mt-1 text-xs font-bold text-stone-500">Expires {new Date(coupon.expiresAt).toLocaleDateString()}</p> : null}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="h-10 min-h-10 px-3"
+                    onClick={() => removeCoupon(coupon)}
+                    aria-label={`Remove offer ${coupon.code}`}
+                    title={`Remove offer ${coupon.code}`}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
+                <Button type="button" variant="ghost" className="mt-4 h-10 min-h-10 px-4" onClick={() => toggleCoupon(coupon)}>
+                  {coupon.active ? "Deactivate" : "Activate"}
+                </Button>
+              </div>
+            ))}
+            {!coupons.length ? <p className="rounded-[8px] border border-black/10 bg-white p-5 text-sm font-bold text-stone-600">No offers yet.</p> : null}
           </div>
         </section>
       ) : null}

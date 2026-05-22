@@ -2,17 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { MenuCard } from "@/components/menu/MenuCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { getCategories, getMenuItems, type Category, type MenuItem } from "@/lib/api";
+import { formatMoney } from "@/lib/constants";
+import { getActiveCoupons, getCategories, getMenuItems, type Category, type Coupon, type MenuItem } from "@/lib/api";
 
 export function Menu() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
   useEffect(() => {
     getCategories().then(setCategories);
     getMenuItems().then(setItems);
+    getActiveCoupons().then(setCoupons).catch(() => setCoupons([]));
   }, []);
 
   const visible = useMemo(() => {
@@ -40,6 +43,19 @@ export function Menu() {
           </Button>
         ))}
       </div>
+      {coupons.length ? (
+        <div className="mt-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8">
+          {coupons.map((coupon) => (
+            <div key={coupon._id} className="min-w-64 rounded-[8px] border border-gold-300 bg-gold-100 p-4 text-ink">
+              <p className="text-xs font-black uppercase text-gold-700">Offer code</p>
+              <p className="mt-1 text-2xl font-black">{coupon.code}</p>
+              <p className="mt-1 text-sm font-bold">
+                {coupon.type === "percent" ? `${coupon.value}% off` : `${formatMoney(coupon.value)} off`} over {formatMoney(coupon.minOrder)}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="mt-6 grid w-full min-w-0 grid-cols-1 gap-4 px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8 2xl:grid-cols-4">
         {visible.map((item) => (
           <MenuCard key={item._id} item={item} />

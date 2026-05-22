@@ -20,6 +20,16 @@ export type Category = {
   sortOrder?: number;
 };
 
+export type Coupon = {
+  _id: string;
+  code: string;
+  type: "flat" | "percent";
+  value: number;
+  minOrder: number;
+  active: boolean;
+  expiresAt?: string;
+};
+
 export type MenuItem = {
   _id: string;
   name: string;
@@ -130,6 +140,16 @@ export async function getCategories() {
   return data.categories;
 }
 
+export async function getActiveCoupons() {
+  const { data } = await api.get<{ coupons: Coupon[] }>("/coupons");
+  return data.coupons;
+}
+
+export async function getCoupons() {
+  const { data } = await api.get<{ coupons: Coupon[] }>("/coupons/admin");
+  return data.coupons;
+}
+
 export async function getTables() {
   const { data } = await api.get<{ tables: RestaurantTable[] }>("/tables");
   return data.tables;
@@ -190,6 +210,15 @@ export async function saveCategory(payload: Partial<Category>, id?: string) {
     ? await api.patch<{ category: Category }>(`/categories/${id}`, payload)
     : await api.post<{ category: Category }>("/categories", payload);
   return data.category;
+}
+
+export async function saveCoupon(payload: Partial<Coupon>, id?: string) {
+  const { data } = id ? await api.patch<{ coupon: Coupon }>(`/coupons/${id}`, payload) : await api.post<{ coupon: Coupon }>("/coupons", payload);
+  return data.coupon;
+}
+
+export async function deleteCoupon(id: string) {
+  await api.delete(`/coupons/${id}`);
 }
 
 export async function saveTable(payload: Partial<RestaurantTable>, id?: string) {

@@ -14,7 +14,7 @@ backend/    Node.js + Express + MongoDB + Socket.IO
 - Protected `/staff/login`, `/staff/orders`, `/kitchen`, and `/admin` routes.
 - Waiter table ordering with cart, notes, active table orders, GST bill, and print bill.
 - Kitchen dashboard with realtime Pending, Preparing, Ready, and Served updates.
-- Admin management for menu items, categories, tables, employees, and sales reports.
+- Admin management for menu items, categories, offers/coupons, tables, employees, and sales reports.
 - MongoDB models for Users, Tables, Categories, MenuItems, Orders, and Payments.
 - JWT role-based access for admin, waiter, kitchen staff, and cashier.
 

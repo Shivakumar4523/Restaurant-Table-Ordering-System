@@ -33,6 +33,7 @@ export async function calculateOrder({ items, couponCode }) {
 
     if (coupon && !expired && subtotal >= coupon.minOrder) {
       discount = coupon.type === "percent" ? Math.round((subtotal * coupon.value) / 100) : coupon.value;
+      discount = Math.max(0, Math.min(discount, subtotal));
       appliedCoupon = coupon.code;
     }
   }
