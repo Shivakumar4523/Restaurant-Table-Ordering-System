@@ -3,6 +3,7 @@ import axios from "axios";
 export type Role = "admin" | "waiter" | "kitchen" | "cashier" | "user";
 
 export type User = {
+  _id?: string;
   id: string;
   name: string;
   email: string;
@@ -196,6 +197,10 @@ export async function saveTable(payload: Partial<RestaurantTable>, id?: string) 
   return data.table;
 }
 
+export async function deleteTable(id: string) {
+  await api.delete(`/tables/${id}`);
+}
+
 export async function getEmployees() {
   const { data } = await api.get<{ employees: User[] }>("/employees");
   return data.employees;
@@ -204,4 +209,8 @@ export async function getEmployees() {
 export async function saveEmployee(payload: Partial<User> & { password?: string }, id?: string) {
   const { data } = id ? await api.patch<{ employee: User }>(`/employees/${id}`, payload) : await api.post<{ employee: User }>("/employees", payload);
   return data.employee;
+}
+
+export async function deleteEmployee(id: string) {
+  await api.delete(`/employees/${id}`);
 }

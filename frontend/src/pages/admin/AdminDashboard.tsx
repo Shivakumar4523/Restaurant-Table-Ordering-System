@@ -7,6 +7,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { TableStatusPill } from "@/components/ui/TableStatusPill";
 import {
   deleteMenuItem,
+  deleteEmployee,
+  deleteTable,
   getCategories,
   getEmployees,
   getMenuItems,
@@ -148,6 +150,29 @@ export function AdminDashboard() {
     setItems(await getMenuItems({ available: false }));
   }
 
+  async function removeTable(table: RestaurantTable) {
+    const label = `Table ${table.number}`;
+    if (!window.confirm(`Remove ${label}?`)) return;
+
+    await deleteTable(table._id);
+    setMessage(`${label} removed.`);
+    setTables(await getTables());
+  }
+
+  async function removeEmployee(employee: User) {
+    const employeeId = employee.id || employee._id;
+    if (!employeeId) {
+      setMessage("Unable to remove employee: missing employee id.");
+      return;
+    }
+
+    if (!window.confirm(`Remove ${employee.name}?`)) return;
+
+    await deleteEmployee(employeeId);
+    setMessage(`${employee.name} removed.`);
+    setEmployees(await getEmployees());
+  }
+
   return (
     <main className="px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -285,8 +310,22 @@ export function AdminDashboard() {
           <div className="grid gap-3 md:grid-cols-3">
             {tables.map((table) => (
               <div key={table._id} className="rounded-[8px] border border-black/10 bg-white p-4">
-                <p className="text-xl font-black text-ink">{table.number}</p>
-                <p className="mt-1 text-sm text-stone-600">{table.section} | {table.capacity} seats</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xl font-black text-ink">{table.number}</p>
+                    <p className="mt-1 text-sm text-stone-600">{table.section} | {table.capacity} seats</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="h-10 min-h-10 px-3"
+                    onClick={() => removeTable(table)}
+                    aria-label={`Remove table ${table.number}`}
+                    title={`Remove table ${table.number}`}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
                 <div className="mt-3"><TableStatusPill status={table.status} /></div>
               </div>
             ))}
@@ -316,9 +355,23 @@ export function AdminDashboard() {
           <div className="grid gap-3 md:grid-cols-2">
             {employees.map((employee) => (
               <div key={employee.id || employee.email} className="rounded-[8px] border border-black/10 bg-white p-4">
-                <p className="font-black text-ink">{employee.name}</p>
-                <p className="mt-1 text-sm text-stone-600">{employee.email}</p>
-                <p className="mt-2 inline-flex rounded-full bg-forest-50 px-3 py-1 text-xs font-black uppercase text-forest-700">{employee.role}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-black text-ink">{employee.name}</p>
+                    <p className="mt-1 text-sm text-stone-600">{employee.email}</p>
+                    <p className="mt-2 inline-flex rounded-full bg-forest-50 px-3 py-1 text-xs font-black uppercase text-forest-700">{employee.role}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="h-10 min-h-10 px-3"
+                    onClick={() => removeEmployee(employee)}
+                    aria-label={`Remove employee ${employee.name}`}
+                    title={`Remove employee ${employee.name}`}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

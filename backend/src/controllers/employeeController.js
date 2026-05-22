@@ -6,8 +6,8 @@ const employeeProjection = "-password -addresses";
 
 export async function getEmployees(_req, res, next) {
   try {
-    const employees = await User.find({ role: { $in: STAFF_ROLES } }).select(employeeProjection).sort({ role: 1, name: 1 });
-    res.json({ employees });
+    const employees = await User.find({ role: { $in: STAFF_ROLES }, isActive: true }).select(employeeProjection).sort({ role: 1, name: 1 });
+    res.json({ employees: employees.map(userPayload) });
   } catch (error) {
     next(error);
   }
