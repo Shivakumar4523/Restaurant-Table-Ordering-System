@@ -58,6 +58,15 @@ function normalizeCouponPayload(body, { partial = false } = {}) {
   return payload;
 }
 
+function handleCouponError(error, res, next) {
+  if (error?.code === 11000) {
+    res.status(409).json({ message: "Coupon code already exists" });
+    return;
+  }
+
+  next(error);
+}
+
 export async function getActiveCoupons(_req, res, next) {
   try {
     const coupons = await Coupon.find(activeCouponFilter()).sort({ minOrder: 1, code: 1 });
@@ -81,7 +90,7 @@ export async function createCoupon(req, res, next) {
     const coupon = await Coupon.create(normalizeCouponPayload(req.body));
     res.status(201).json({ coupon });
   } catch (error) {
-    next(error);
+    handleCouponError(error, res, next);
   }
 }
 
@@ -92,7 +101,7 @@ export async function updateCoupon(req, res, next) {
     if (!coupon) return res.status(404).json({ message: "Coupon not found" });
     res.json({ coupon });
   } catch (error) {
-    next(error);
+    handleCouponError(error, res, next);
   }
 }
 

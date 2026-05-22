@@ -116,6 +116,11 @@ function unwrapError(error: unknown) {
   return error instanceof Error ? error : new Error("Request failed");
 }
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => Promise.reject(unwrapError(error))
+);
+
 export async function login(payload: { email: string; password: string }) {
   try {
     const { data } = await api.post<{ token: string; user: User }>("/auth/login", payload);

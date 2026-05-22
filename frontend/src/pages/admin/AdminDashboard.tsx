@@ -95,6 +95,8 @@ export function AdminDashboard() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingMenuItem, setSavingMenuItem] = useState(false);
+  const [offerType, setOfferType] = useState<Coupon["type"]>("flat");
+  const [savingOffer, setSavingOffer] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -207,21 +209,39 @@ export function AdminDashboard() {
 
   async function onCouponSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (savingOffer) return;
+
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const expiresAt = String(form.get("expiresAt") || "");
+    const type = String(form.get("type")) as Coupon["type"];
+    const value = Number(form.get("value"));
 
-    const savedCoupon = await saveCoupon({
-      code: String(form.get("code")),
-      type: String(form.get("type")) as Coupon["type"],
-      value: Number(form.get("value")),
-      minOrder: Number(form.get("minOrder") || 0),
-      active: form.get("active") === "on",
-      expiresAt: expiresAt || undefined
-    });
-    formElement.reset();
-    setMessage("Offer saved.");
-    setCoupons((current) => sortCoupons(upsertById(current, savedCoupon)));
+    if (type === "percent" && value > 100) {
+      setMessage("Percent offers must be 100 or less. Choose Flat amount off for rupee discounts.");
+      return;
+    }
+
+    setSavingOffer(true);
+
+    try {
+      const savedCoupon = await saveCoupon({
+        code: String(form.get("code")),
+        type,
+        value,
+        minOrder: Number(form.get("minOrder") || 0),
+        active: form.get("active") === "on",
+        expiresAt: expiresAt || undefined
+      });
+      formElement.reset();
+      setOfferType("flat");
+      setMessage(`Offer ${savedCoupon.code} saved.`);
+      setCoupons((current) => sortCoupons(upsertById(current, savedCoupon)));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save offer.");
+    } finally {
+      setSavingOffer(false);
+    }
   }
 
   async function onTableSubmit(event: FormEvent<HTMLFormElement>) {
@@ -453,17 +473,25 @@ export function AdminDashboard() {
             <h3 className="text-xl font-black text-ink">Add offer</h3>
             <div className="mt-4 grid gap-3">
               <Input name="code" placeholder="Coupon code" required />
-              <select name="type" className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold">
-                <option value="percent">Percent off</option>
+              <select
+                name="type"
+                value={offerType}
+                onChange={(event) => setOfferType(event.target.value as Coupon["type"])}
+                className="h-11 rounded-[8px] border border-black/10 bg-white px-3 text-sm font-semibold"
+              >
                 <option value="flat">Flat amount off</option>
+                <option value="percent">Percent off</option>
               </select>
               <div className="grid grid-cols-2 gap-3">
-                <Input name="value" type="number" min={1} placeholder="Value" required />
+                <Input name="value" type="number" min={1} placeholder={offerType === "percent" ? "Percent" : "Amount"} required />
                 <Input name="minOrder" type="number" min={0} placeholder="Min order" defaultValue={0} />
               </div>
+              <p className="text-xs font-bold text-stone-500">
+                {offerType === "percent" ? "Percent offers can be 1 to 100." : "Use this for rupee discounts like 599 off."}
+              </p>
               <Input name="expiresAt" type="date" placeholder="Expiry date" />
               <label className="flex items-center gap-2 text-sm font-black"><input type="checkbox" name="active" defaultChecked /> Active</label>
-              <Button>Save offer</Button>
+              <Button disabled={savingOffer}>{savingOffer ? "Saving offer..." : "Save offer"}</Button>
             </div>
           </form>
           <div className="grid gap-3 md:grid-cols-2">
