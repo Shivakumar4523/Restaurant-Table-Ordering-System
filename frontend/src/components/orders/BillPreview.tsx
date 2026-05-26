@@ -4,8 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { Order } from "@/lib/api";
 
 const restaurantDetails = {
-  name: "ROYAL SPICE",
-  branchName: "SHIVA",
+  name: "ROYAL SPICE SHIVA",
   address: ["Garden Road, Hyderabad"],
   gstin: ""
 };
@@ -84,10 +83,7 @@ export function BillPreview({
       <div className="thermal-receipt print-area max-h-[92vh] w-full max-w-[380px] overflow-y-auto rounded-[8px] bg-white px-5 py-6 shadow-2xl">
         <div className="receipt-body">
           <header className="text-center">
-            <h2 className="text-[20px] font-black uppercase leading-tight tracking-[0.12em]">
-              {restaurantDetails.name}
-              <span className="ml-2 inline-block align-super text-[13px] leading-none tracking-[0.08em]">{restaurantDetails.branchName}</span>
-            </h2>
+            <h2 className="text-[20px] font-black uppercase leading-tight tracking-[0.08em]">{restaurantDetails.name}</h2>
             <p className="mt-1 text-[13px] font-black uppercase tracking-[0.08em]">Table Ordering System</p>
             <div className="mt-1 text-[13px] leading-[1.25]">
               {restaurantDetails.address.map((line) => (
