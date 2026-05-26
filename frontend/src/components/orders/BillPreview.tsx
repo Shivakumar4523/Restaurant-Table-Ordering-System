@@ -4,13 +4,9 @@ import { useAuth } from "@/context/AuthContext";
 import type { Order } from "@/lib/api";
 
 const restaurantDetails = {
-  name: "MAHA RAJU GARI RUCHULU",
-  address: [
-    "Padmavathy Residency, Arunodaya Colony,",
-    "Sri Sai Nagar, Madhapur, Hyderabad,",
-    "Telangana-500019"
-  ],
-  gstin: "36ABKFR5209E1ZD"
+  name: "ROYAL SPICE RESTAURANT",
+  address: ["Garden Road, Hyderabad"],
+  gstin: ""
 };
 
 function formatDate(date: Date) {
@@ -92,7 +88,7 @@ export function BillPreview({
               {restaurantDetails.address.map((line) => (
                 <p key={line}>{line}</p>
               ))}
-              <p>GSTIN {restaurantDetails.gstin}</p>
+              {restaurantDetails.gstin ? <p>GSTIN {restaurantDetails.gstin}</p> : null}
             </div>
             <p className="mt-5 text-[20px] font-black uppercase tracking-[0.08em]">DINEIN</p>
           </header>
