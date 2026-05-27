@@ -17,6 +17,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import reservationRoutes from "./routes/reservationRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import barItemRoutes from "./routes/barItemRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
@@ -93,6 +94,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/foods", foodRoutes);
 app.use("/api/menu-items", menuItemRoutes);
+app.use("/api/bar-items", barItemRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/tables", tableRoutes);
@@ -129,6 +131,7 @@ app.set("io", io);
 
 io.on("connection", (socket) => {
   socket.on("join:kitchen", () => socket.join("kitchen"));
+  socket.on("join:bar", () => socket.join("bar"));
   socket.on("join:staff", () => socket.join("staff"));
 });
 

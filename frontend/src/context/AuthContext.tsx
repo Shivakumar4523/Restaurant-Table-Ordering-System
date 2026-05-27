@@ -7,7 +7,7 @@ type AuthContextValue = {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (payload: { email: string; password: string }) => Promise<void>;
+  login: (payload: { email: string; password: string }) => Promise<User>;
   logout: () => void;
   hasRole: (...roles: Role[]) => boolean;
 };
@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.localStorage.setItem("rain-tree-token", data.token);
         setToken(data.token);
         setUser(data.user);
+        return data.user;
       },
       logout: () => {
         window.localStorage.removeItem("rain-tree-token");

@@ -2,6 +2,13 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import type { Role } from "@/lib/api";
 
+function homeForRole(role: Role) {
+  if (role === "kitchen") return "/kitchen";
+  if (role === "bar") return "/bar-service";
+  if (role === "admin") return "/admin";
+  return "/staff/orders";
+}
+
 export function RoleRoute({ roles }: { roles: Role[] }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -15,7 +22,7 @@ export function RoleRoute({ roles }: { roles: Role[] }) {
   }
 
   if (!roles.includes(user.role)) {
-    return <Navigate to="/staff/orders" replace />;
+    return <Navigate to={homeForRole(user.role)} replace />;
   }
 
   return <Outlet />;

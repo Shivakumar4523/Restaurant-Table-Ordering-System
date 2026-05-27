@@ -4,13 +4,22 @@ import { LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
+import type { Role } from "@/lib/api";
 
 const demoLogins = [
   "owner@royalspice.test / owner16655",
   "waiter@royalspice.test / waiter6655",
   "chef@royalspice.test / chef6655",
+  "bar@royalspice.test / bar6655",
   "cashier@royalspice.test / cash6655"
 ];
+
+function homeForRole(role: Role) {
+  if (role === "kitchen") return "/kitchen";
+  if (role === "bar") return "/bar-service";
+  if (role === "admin") return "/admin";
+  return "/staff/orders";
+}
 
 export function StaffLogin() {
   const { user, login } = useAuth();
@@ -20,7 +29,7 @@ export function StaffLogin() {
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    return <Navigate to={user.role === "kitchen" ? "/kitchen" : user.role === "admin" ? "/admin" : "/staff/orders"} replace />;
+    return <Navigate to={homeForRole(user.role)} replace />;
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -30,11 +39,11 @@ export function StaffLogin() {
     setError("");
 
     try {
-      await login({
+      const nextUser = await login({
         email: String(form.get("email")),
         password: String(form.get("password"))
       });
-      navigate((location.state as { from?: string } | null)?.from || "/staff/orders", { replace: true });
+      navigate((location.state as { from?: string } | null)?.from || homeForRole(nextUser.role), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

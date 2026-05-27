@@ -3,12 +3,15 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 import { StaffLayout } from "@/components/layout/StaffLayout";
 import { RoleRoute } from "@/routes/RoleRoute";
 import { StaffLogin } from "@/pages/auth/StaffLogin";
+import { AdminBarItems } from "@/pages/admin/AdminBarItems";
 import { AdminDashboard } from "@/pages/admin/AdminDashboard";
+import { BarDashboard } from "@/pages/bar/BarDashboard";
 import { KitchenDashboard } from "@/pages/kitchen/KitchenDashboard";
 import { Orders } from "@/pages/staff/Orders";
 import { About } from "@/pages/public/About";
 import { Contact } from "@/pages/public/Contact";
 import { Home } from "@/pages/public/Home";
+import { BarMenu } from "@/pages/public/BarMenu";
 import { Menu } from "@/pages/public/Menu";
 
 export default function App() {
@@ -17,6 +20,7 @@ export default function App() {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/menu" element={<Menu />} />
+        <Route path="/bar" element={<BarMenu />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
       </Route>
@@ -30,8 +34,12 @@ export default function App() {
         <Route element={<RoleRoute roles={["admin", "kitchen"]} />}>
           <Route path="/kitchen" element={<KitchenDashboard />} />
         </Route>
+        <Route element={<RoleRoute roles={["admin", "bar"]} />}>
+          <Route path="/bar-service" element={<BarDashboard />} />
+        </Route>
         <Route element={<RoleRoute roles={["admin"]} />}>
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/bar-items" element={<AdminBarItems />} />
         </Route>
       </Route>
 

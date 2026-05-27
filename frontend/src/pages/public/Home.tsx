@@ -8,7 +8,8 @@ export function Home() {
     <main>
       <section className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-gold-700">Royal Spice Restaurant</p>
+          <img src="/royal-spice-brand.svg" alt="Shiva Royal Spice Restaurant and Bar" className="w-full max-w-xl object-contain" />
+          <p className="mt-8 text-sm font-black uppercase tracking-[0.22em] text-gold-700">Royal Spice Restaurant and Bar</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight text-ink sm:text-6xl">
             Restaurant Table Ordering System
           </h1>

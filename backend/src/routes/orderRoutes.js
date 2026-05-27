@@ -21,11 +21,11 @@ const router = express.Router();
 
 router.post("/quote", quoteOrder);
 router.post("/table", protect, allowRoles("admin", "waiter"), createTableOrder);
-router.get("/active", protect, allowRoles("admin", "waiter", "kitchen", "cashier"), getActiveTableOrders);
+router.get("/active", protect, allowRoles("admin", "waiter", "kitchen", "bar", "cashier"), getActiveTableOrders);
 router.post("/payments", protect, allowRoles("admin", "cashier", "waiter"), recordPayment);
 router.get("/:id/bill", protect, allowRoles("admin", "waiter", "cashier"), getBill);
 router.patch("/:id/billing", protect, allowRoles("admin", "waiter", "cashier"), markBilling);
-router.patch("/:id/table-status", protect, allowRoles("admin", "waiter", "kitchen", "cashier"), updateTableOrderStatus);
+router.patch("/:id/table-status", protect, allowRoles("admin", "waiter", "kitchen", "bar", "cashier"), updateTableOrderStatus);
 router.post("/", optionalAuth, createOrder);
 router.get("/mine", protect, getMyOrders);
 router.get("/", protect, adminOnly, getAllOrders);

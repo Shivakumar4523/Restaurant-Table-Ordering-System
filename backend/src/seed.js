@@ -6,11 +6,13 @@ import Coupon from "./models/Coupon.js";
 import User from "./models/User.js";
 import Category from "./models/Category.js";
 import MenuItem from "./models/MenuItem.js";
+import BarItem from "./models/BarItem.js";
 import Order from "./models/Order.js";
 import Payment from "./models/Payment.js";
 import Table from "./models/Table.js";
 import { foods, coupons } from "./data/sampleData.js";
 import { categories, employees, menuItems, tables } from "./seed/sampleMenu.js";
+import { barItems } from "./seed/sampleBarItems.js";
 
 async function seed() {
   await connectDB();
@@ -19,6 +21,7 @@ async function seed() {
   await Coupon.deleteMany({});
   await Category.deleteMany({});
   await MenuItem.deleteMany({});
+  await BarItem.deleteMany({});
   await Order.deleteMany({});
   await Payment.deleteMany({});
   await Table.deleteMany({});
@@ -38,6 +41,7 @@ async function seed() {
       };
     })
   );
+  await BarItem.insertMany(barItems);
   await Table.insertMany(tables);
 
   for (const employeeData of employees) {
@@ -60,6 +64,7 @@ async function seed() {
   console.log("Royal Spice owner login: owner@royalspice.test / owner16655");
   console.log("Waiter login: waiter@royalspice.test / waiter6655");
   console.log("Chef login: chef@royalspice.test / chef6655");
+  console.log("Bar login: bar@royalspice.test / bar6655");
   console.log("Cashier login: cashier@royalspice.test / cash6655");
   await mongoose.disconnect();
 }

@@ -150,6 +150,14 @@ export const employees = [
     employeeCode: "CHF-001"
   },
   {
+    name: "Bala Bar",
+    email: "bar@royalspice.test",
+    phone: "9000000005",
+    password: "bar6655",
+    role: "bar",
+    employeeCode: "BAR-001"
+  },
+  {
     name: "Meera Cashier",
     email: "cashier@royalspice.test",
     phone: "9000000004",

@@ -5,6 +5,7 @@ import type { Order } from "@/lib/api";
 
 const restaurantDetails = {
   name: "ROYAL SPICE SHIVA",
+  subtitle: "RESTAURANT AND BAR",
   address: ["Garden Road, Hyderabad"],
   gstin: ""
 };
@@ -65,7 +66,7 @@ export function BillPreview({
 
   const printedAt = new Date();
   const tableNumber = order.table?.number || order.tableNumber || "-";
-  const billNumber = buildReceiptNumber(order, printedAt);
+  const billNumber = order.billNumber || buildReceiptNumber(order, printedAt);
   const tokenNumber = buildTokenNumber(order);
   const cashierName = user?.employeeCode ? `${user.name}@${user.employeeCode}` : user?.name || "cashier";
   const itemCount = order.items.length;
@@ -84,7 +85,7 @@ export function BillPreview({
         <div className="receipt-body">
           <header className="text-center">
             <h2 className="text-[20px] font-black uppercase leading-tight tracking-[0.08em]">{restaurantDetails.name}</h2>
-            <p className="mt-1 text-[13px] font-black uppercase tracking-[0.08em]">Table Ordering System</p>
+            <p className="mt-1 text-[13px] font-black uppercase tracking-[0.08em]">{restaurantDetails.subtitle}</p>
             <div className="mt-1 text-[13px] leading-[1.25]">
               {restaurantDetails.address.map((line) => (
                 <p key={line}>{line}</p>

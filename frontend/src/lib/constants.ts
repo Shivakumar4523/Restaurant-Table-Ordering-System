@@ -1,4 +1,4 @@
-export const roles = ["admin", "waiter", "kitchen", "cashier"] as const;
+export const roles = ["admin", "waiter", "kitchen", "bar", "cashier"] as const;
 
 export const orderStatuses = ["pending", "preparing", "ready", "served"] as const;
 

@@ -1,24 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, CreditCard, QrCode, ReceiptText, RefreshCw, Search, Send } from "lucide-react";
+import { Banknote, CreditCard, Minus, Plus, QrCode, ReceiptText, RefreshCw, Search, Send, Wine } from "lucide-react";
 import { BillPreview } from "@/components/orders/BillPreview";
 import { TableGrid } from "@/components/orders/TableGrid";
 import { MenuCard } from "@/components/menu/MenuCard";
 import { QuantityStepper } from "@/components/menu/QuantityStepper";
+import { PegSizeSelector } from "@/components/bar/PegSizeSelector";
+import { StockStatusBadge } from "@/components/bar/StockStatusBadge";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
+import { getDefaultPegSize, getPegLabel, getPegPrice, isOutOfStock } from "@/lib/bar";
 import {
   getActiveOrders,
+  getBarItems,
   getBill,
   getCategories,
   getMenuItems,
   getTables,
   markBilling,
   recordPayment,
+  resolveAssetUrl,
   submitTableOrder,
   type Bill,
+  type BarItem,
+  type BarPegSize,
   type Category,
   type MenuItem,
   type Order,
@@ -27,13 +34,23 @@ import {
 import { formatMoney } from "@/lib/constants";
 
 type CartLine = {
+  kind: "food";
   item: MenuItem;
+  quantity: number;
+  note?: string;
+} | {
+  kind: "bar";
+  item: BarItem;
+  pegSize: BarPegSize;
+  price: number;
   quantity: number;
   note?: string;
 };
 
 type CashierFilter = "all" | "ready" | "served" | "billing";
 type PaymentMethod = "cash" | "card" | "upi";
+
+const activeCashierStatuses: Order["status"][] = ["pending", "preparing", "ready", "served", "billing"];
 
 const cashierFilters: Array<{ value: CashierFilter; label: string }> = [
   { value: "all", label: "All unpaid" },
@@ -54,11 +71,12 @@ const orderStatusStyles: Record<Order["status"], string> = {
   ready: "border-emerald-200 bg-emerald-100 text-emerald-800",
   served: "border-forest-700 bg-forest-50 text-forest-700",
   billing: "border-blue-200 bg-blue-100 text-blue-800",
+  merged: "border-stone-200 bg-stone-100 text-stone-700",
   cancelled: "border-red-200 bg-red-100 text-red-800"
 };
 
 function mergeActiveOrder(current: Order[], order: Order) {
-  if (order.paymentStatus === "paid") {
+  if (order.paymentStatus === "paid" || !activeCashierStatuses.includes(order.status)) {
     return current.filter((item) => item._id !== order._id);
   }
 
@@ -80,6 +98,22 @@ function mergeMenuItem(current: MenuItem[], item: MenuItem) {
     if (Boolean(a.isFeatured) !== Boolean(b.isFeatured)) return Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
     return a.categoryName.localeCompare(b.categoryName) || a.name.localeCompare(b.name);
   });
+}
+
+function mergeBarItem(current: BarItem[], item: BarItem) {
+  const nextItems = current.some((record) => record._id === item._id)
+    ? current.map((record) => (record._id === item._id ? item : record))
+    : [item, ...current];
+
+  return nextItems.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+}
+
+function removeById<T extends { _id: string }>(records: T[], id: string) {
+  return records.filter((record) => record._id !== id);
+}
+
+function barLineKey(item: BarItem, pegSize: BarPegSize) {
+  return `${item._id}:${pegSize}`;
 }
 
 function buildBillOrder(bill: Bill): Order {
@@ -113,7 +147,10 @@ function WaiterOrders() {
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [barItems, setBarItems] = useState<BarItem[]>([]);
+  const [barCategories, setBarCategories] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
+  const [menuMode, setMenuMode] = useState<"food" | "bar">("food");
   const [activeCategory, setActiveCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -122,10 +159,12 @@ function WaiterOrders() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([getTables(), getCategories(), getMenuItems()]).then(([tableData, categoryData, menuData]) => {
+    Promise.all([getTables(), getCategories(), getMenuItems(), getBarItems({ limit: 240 })]).then(([tableData, categoryData, menuData, barData]) => {
       setTables(tableData);
       setCategories(categoryData);
       setItems(menuData);
+      setBarItems(barData.barItems);
+      setBarCategories(barData.categories);
       setSelectedTable(tableData[0] || null);
     });
   }, []);
@@ -151,15 +190,36 @@ function WaiterOrders() {
     const syncMenuItem = (item: MenuItem) => {
       setItems((current) => mergeMenuItem(current, item));
       setCart((current) => {
-        if (item.isAvailable === false) return current.filter((line) => line.item._id !== item._id);
-        return current.map((line) => (line.item._id === item._id ? { ...line, item } : line));
+        if (item.isAvailable === false) return current.filter((line) => line.kind !== "food" || line.item._id !== item._id);
+        return current.map((line) => (line.kind === "food" && line.item._id === item._id ? { ...line, item } : line));
       });
     };
 
+    const syncBarItem = (item: BarItem) => {
+      setBarItems((current) => mergeBarItem(current, item));
+      setCart((current) =>
+        current
+          .map((line) => {
+            if (line.kind !== "bar" || line.item._id !== item._id) return line;
+            return { ...line, item, price: getPegPrice(item, line.pegSize) };
+          })
+          .filter((line) => line.kind === "food" || (!isOutOfStock(line.item) && line.price > 0))
+      );
+    };
+
+    const removeBarItem = (payload: { _id: string }) => {
+      setBarItems((current) => removeById(current, payload._id));
+      setCart((current) => current.filter((line) => line.kind === "food" || line.item._id !== payload._id));
+    };
+
     socket.on("menu-item:updated", syncMenuItem);
+    socket.on("bar-item:updated", syncBarItem);
+    socket.on("bar-item:deleted", removeBarItem);
 
     return () => {
       socket.off("menu-item:updated", syncMenuItem);
+      socket.off("bar-item:updated", syncBarItem);
+      socket.off("bar-item:deleted", removeBarItem);
     };
   }, [socket]);
 
@@ -172,31 +232,69 @@ function WaiterOrders() {
     });
   }, [activeCategory, items, query]);
 
-  const subtotal = cart.reduce((sum, line) => sum + line.item.price * line.quantity, 0);
+  const visibleBarItems = useMemo(() => {
+    const normalized = query.toLowerCase();
+    return barItems.filter((item) => {
+      const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+      const matchesSearch = !normalized || [item.name, item.description, item.category, item.brand, item.alcoholType].join(" ").toLowerCase().includes(normalized);
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeCategory, barItems, query]);
+
+  const subtotal = cart.reduce((sum, line) => sum + (line.kind === "bar" ? line.price : line.item.price) * line.quantity, 0);
   const gst = Math.round(subtotal * 0.05);
   const total = subtotal + gst;
   const itemQuantities = useMemo(
-    () => new Map(cart.map((line) => [line.item._id, line.quantity])),
+    () => new Map(cart.filter((line) => line.kind === "food").map((line) => [line.item._id, line.quantity])),
+    [cart]
+  );
+  const barItemQuantities = useMemo(
+    () => new Map(cart.filter((line) => line.kind === "bar").map((line) => [barLineKey(line.item, line.pegSize), line.quantity])),
     [cart]
   );
 
   function addItem(item: MenuItem) {
     setCart((current) => {
-      const existing = current.find((line) => line.item._id === item._id);
-      if (existing) return current.map((line) => (line.item._id === item._id ? { ...line, quantity: line.quantity + 1 } : line));
-      return [...current, { item, quantity: 1 }];
+      const existing = current.find((line) => line.kind === "food" && line.item._id === item._id);
+      if (existing) return current.map((line) => (line.kind === "food" && line.item._id === item._id ? { ...line, quantity: line.quantity + 1 } : line));
+      return [...current, { kind: "food", item, quantity: 1 }];
     });
   }
 
-  function setQuantity(id: string, quantity: number) {
-    setCart((current) => current.map((line) => (line.item._id === id ? { ...line, quantity } : line)).filter((line) => line.quantity > 0));
+  function addBarItem(item: BarItem, pegSize: BarPegSize) {
+    const price = getPegPrice(item, pegSize);
+    if (isOutOfStock(item) || price <= 0) return;
+
+    const key = barLineKey(item, pegSize);
+    setCart((current) => {
+      const existing = current.find((line) => line.kind === "bar" && barLineKey(line.item, line.pegSize) === key);
+      if (existing) return current.map((line) => (line.kind === "bar" && barLineKey(line.item, line.pegSize) === key ? { ...line, quantity: line.quantity + 1 } : line));
+      return [...current, { kind: "bar", item, pegSize, price, quantity: 1 }];
+    });
+  }
+
+  function setFoodQuantity(id: string, quantity: number) {
+    setCart((current) => current.map((line) => (line.kind === "food" && line.item._id === id ? { ...line, quantity } : line)).filter((line) => line.quantity > 0));
+  }
+
+  function setBarQuantity(key: string, quantity: number) {
+    setCart((current) =>
+      current
+        .map((line) => (line.kind === "bar" && barLineKey(line.item, line.pegSize) === key ? { ...line, quantity } : line))
+        .filter((line) => line.quantity > 0)
+    );
+  }
+
+  function switchMenuMode(nextMode: "food" | "bar") {
+    setMenuMode(nextMode);
+    setActiveCategory("All");
   }
 
   async function submitOrder() {
     if (submitting) return;
 
     if (!selectedTable || !cart.length) {
-      setMessage("Select a table and add at least one dish.");
+      setMessage("Select a table and add at least one item.");
       return;
     }
 
@@ -212,7 +310,11 @@ function WaiterOrders() {
       const order = await submitTableOrder({
         tableId: selectedTable._id,
         customerNotes,
-        items: cart.map((line) => ({ menuItem: line.item._id, quantity: line.quantity, note: line.note }))
+        items: cart.map((line) =>
+          line.kind === "bar"
+            ? { barItem: line.item._id, pegSize: line.pegSize, quantity: line.quantity, note: line.note }
+            : { menuItem: line.item._id, quantity: line.quantity, note: line.note }
+        )
       });
       const updatedTable = order.table || optimisticTable;
 
@@ -245,17 +347,27 @@ function WaiterOrders() {
           <h2 className="mt-1 text-2xl font-black">Table {selectedTable?.number || "-"}</h2>
           <div className="mt-5 space-y-3">
             {cart.map((line) => (
-              <div key={line.item._id} className="rounded-[8px] bg-white/10 p-3">
+              <div key={line.kind === "bar" ? barLineKey(line.item, line.pegSize) : line.item._id} className="rounded-[8px] bg-white/10 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="break-words font-black">{line.item.name}</p>
-                    <p className="text-sm text-white/70">{formatMoney(line.item.price)}</p>
+                    <p className="break-words font-black">
+                      {line.item.name}
+                      {line.kind === "bar" ? <span className="ml-1 text-gold-300">({getPegLabel(line.pegSize)})</span> : null}
+                    </p>
+                    <p className="text-sm text-white/70">{formatMoney(line.kind === "bar" ? line.price : line.item.price)}</p>
                   </div>
-                  <QuantityStepper value={line.quantity} onChange={(value) => setQuantity(line.item._id, value)} />
+                  <QuantityStepper
+                    value={line.quantity}
+                    onChange={(value) =>
+                      line.kind === "bar"
+                        ? setBarQuantity(barLineKey(line.item, line.pegSize), value)
+                        : setFoodQuantity(line.item._id, value)
+                    }
+                  />
                 </div>
               </div>
             ))}
-            {!cart.length ? <p className="rounded-[8px] bg-white/10 p-4 text-sm font-bold text-white/74">Add dishes from the menu to create an order.</p> : null}
+            {!cart.length ? <p className="rounded-[8px] bg-white/10 p-4 text-sm font-bold text-white/74">No items selected.</p> : null}
           </div>
           <textarea className="mt-4 min-h-24 w-full rounded-[8px] border border-white/10 bg-white/10 p-3 text-sm font-semibold text-white outline-none placeholder:text-white/45" placeholder="Customer notes" value={customerNotes} onChange={(event) => setCustomerNotes(event.target.value)} />
           <div className="mt-4 space-y-2 text-sm">
@@ -272,13 +384,31 @@ function WaiterOrders() {
       </div>
 
       <section className="mt-5 w-full min-w-0 max-w-none space-y-5 sm:mt-6">
-        <div className="grid w-full min-w-0 gap-3 lg:grid-cols-[minmax(18rem,32rem)_minmax(0,1fr)] lg:items-center">
-          <div className="relative w-full min-w-0">
-            <Search className="absolute left-3 top-3 text-stone-400" size={17} />
-            <Input className="pl-10" placeholder="Search menu items" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <div className="w-full min-w-0 space-y-3">
+          <div className="grid w-full min-w-0 gap-3 xl:grid-cols-[minmax(14rem,20rem)_minmax(18rem,1fr)] xl:items-center">
+            <div className="grid grid-cols-2 overflow-hidden rounded-full border border-gold-300/20 bg-white/5 p-1">
+              <button
+                type="button"
+                className={`h-10 rounded-full text-sm font-black transition ${menuMode === "food" ? "bg-gold-300 text-forest-900" : "text-white hover:bg-white/10"}`}
+                onClick={() => switchMenuMode("food")}
+              >
+                Food
+              </button>
+              <button
+                type="button"
+                className={`h-10 rounded-full text-sm font-black transition ${menuMode === "bar" ? "bg-gold-300 text-forest-900" : "text-white hover:bg-white/10"}`}
+                onClick={() => switchMenuMode("bar")}
+              >
+                Bar
+              </button>
+            </div>
+            <div className="relative w-full min-w-0">
+              <Search className="absolute left-3 top-3 text-stone-400" size={17} />
+              <Input className="pl-10" placeholder="Search items" value={query} onChange={(event) => setQuery(event.target.value)} />
+            </div>
           </div>
-          <div className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">
-            {["All", ...categories.map((category) => category.name)].map((category) => (
+          <div className="hide-scrollbar flex w-full min-w-0 gap-2 overflow-x-auto pb-1">
+            {(menuMode === "food" ? ["All", ...categories.map((category) => category.name)] : ["All", ...barCategories]).map((category) => (
               <Button key={category} variant={activeCategory === category ? "primary" : "ghost"} className="h-10 min-h-10 whitespace-nowrap px-4" onClick={() => setActiveCategory(category)}>
                 {category}
               </Button>
@@ -286,18 +416,110 @@ function WaiterOrders() {
           </div>
         </div>
         <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {visibleItems.map((item) => (
-            <MenuCard
-              key={item._id}
-              item={item}
-              onAdd={addItem}
-              onQuantityChange={(menuItem, quantity) => setQuantity(menuItem._id, quantity)}
-              quantity={itemQuantities.get(item._id) || 0}
-            />
-          ))}
+          {menuMode === "food"
+            ? visibleItems.map((item) => (
+                <MenuCard
+                  key={item._id}
+                  item={item}
+                  onAdd={addItem}
+                  onQuantityChange={(menuItem, quantity) => setFoodQuantity(menuItem._id, quantity)}
+                  quantity={itemQuantities.get(item._id) || 0}
+                />
+              ))
+            : visibleBarItems.map((item) => (
+                <StaffBarCard
+                  key={item._id}
+                  item={item}
+                  quantityForPeg={(nextPegSize) => barItemQuantities.get(barLineKey(item, nextPegSize)) || 0}
+                  onAdd={addBarItem}
+                  onQuantityChange={(nextPegSize, quantity) => setBarQuantity(barLineKey(item, nextPegSize), quantity)}
+                />
+              ))}
         </div>
       </section>
     </main>
+  );
+}
+
+function StaffBarCard({
+  item,
+  quantityForPeg,
+  onAdd,
+  onQuantityChange
+}: {
+  item: BarItem;
+  quantityForPeg: (pegSize: BarPegSize) => number;
+  onAdd: (item: BarItem, pegSize: BarPegSize) => void;
+  onQuantityChange: (pegSize: BarPegSize, quantity: number) => void;
+}) {
+  const [pegSize, setPegSize] = useState<BarPegSize>(() => getDefaultPegSize(item));
+  const price = getPegPrice(item, pegSize);
+  const quantity = quantityForPeg(pegSize);
+  const unavailable = isOutOfStock(item) || price <= 0;
+
+  useEffect(() => {
+    setPegSize(getDefaultPegSize(item));
+  }, [item]);
+
+  return (
+    <article className="glass flex h-full min-w-0 flex-col overflow-hidden rounded-[8px] shadow-sm">
+      <div className="relative aspect-[4/3] bg-black/30">
+        {item.image ? (
+          <img src={resolveAssetUrl(item.image)} alt={item.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center text-gold-300">
+            <Wine size={34} />
+          </div>
+        )}
+        {isOutOfStock(item) ? <div className="absolute left-3 top-3 rounded-[8px] bg-red-600 px-3 py-1 text-xs font-black uppercase text-white">Out of stock</div> : null}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase text-gold-700">{item.category}</p>
+            <h3 className="mt-2 break-words text-lg font-black text-ink">{item.name}</h3>
+            <p className="mt-1 text-sm font-semibold text-stone-600">{item.brand || item.alcoholType || "Bar item"}</p>
+          </div>
+          <StockStatusBadge stock={item.stock} isAvailable={item.isAvailable} />
+        </div>
+        <div className="mt-4">
+          <PegSizeSelector item={item} value={pegSize} onChange={setPegSize} compact />
+        </div>
+        <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+          <p className="text-lg font-black text-gold-700">{price > 0 ? formatMoney(price) : "N/A"}</p>
+          {quantity > 0 ? (
+            <div
+              className="inline-grid h-10 w-[126px] max-w-full shrink-0 grid-cols-[36px_54px_36px] items-center overflow-hidden rounded-full border border-gold-300/20 bg-forest-900 text-white shadow-glow"
+              role="group"
+              aria-label={`${item.name} ${getPegLabel(pegSize)} quantity`}
+            >
+              <button
+                type="button"
+                className="grid h-full place-items-center text-forest-500 transition hover:bg-white/10 hover:text-gold-300"
+                onClick={() => onQuantityChange(pegSize, Math.max(0, quantity - 1))}
+                aria-label={`Decrease ${item.name}`}
+              >
+                <Minus size={16} />
+              </button>
+              <span className="grid h-full place-items-center bg-white/16 text-base font-black text-white">{quantity}</span>
+              <button
+                type="button"
+                className="grid h-full place-items-center text-forest-500 transition hover:bg-white/10 hover:text-gold-300"
+                onClick={() => onQuantityChange(pegSize, quantity + 1)}
+                aria-label={`Increase ${item.name}`}
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          ) : (
+            <Button className="h-10 min-h-10 px-4" disabled={unavailable} onClick={() => onAdd(item, pegSize)}>
+              <Plus size={16} />
+              Add
+            </Button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 

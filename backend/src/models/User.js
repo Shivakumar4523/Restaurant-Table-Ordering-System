@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     password: { type: String, required: true, minlength: 6 },
-    role: { type: String, enum: ["user", "admin", "waiter", "kitchen", "cashier"], default: "user" },
+    role: { type: String, enum: ["user", "admin", "waiter", "kitchen", "bar", "cashier"], default: "user" },
     employeeCode: { type: String, trim: true },
     isActive: { type: Boolean, default: true },
     language: { type: String, enum: ["en", "hi"], default: "en" },

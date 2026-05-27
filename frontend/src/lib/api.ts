@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export type Role = "admin" | "waiter" | "kitchen" | "cashier" | "user";
+export type Role = "admin" | "waiter" | "kitchen" | "bar" | "cashier" | "user";
 
 export type User = {
   _id?: string;
@@ -45,6 +45,44 @@ export type MenuItem = {
   isFeatured?: boolean;
 };
 
+export type BarPegSize = "smallPeg" | "largePeg" | "bottle";
+
+export type BarItem = {
+  _id: string;
+  name: string;
+  category: string;
+  description: string;
+  image?: string;
+  prices: {
+    smallPeg: number;
+    largePeg: number;
+    bottle: number;
+  };
+  stock: number;
+  preparationTime: number;
+  alcoholType: string;
+  brand: string;
+  mlSize: number;
+  isAvailable: boolean;
+  isAlcoholic: boolean;
+  gstPercentage: number;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type BarItemsPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+};
+
+export type BarItemsResponse = {
+  barItems: BarItem[];
+  categories: string[];
+  pagination: BarItemsPagination;
+};
+
 export type RestaurantTable = {
   _id: string;
   number: string;
@@ -56,9 +94,14 @@ export type RestaurantTable = {
 
 export type OrderItem = {
   menuItem?: string;
+  barItem?: string;
+  itemType?: "food" | "menuItem" | "barItem";
   name: string;
   price: number;
   quantity: number;
+  pegSize?: BarPegSize;
+  gstPercentage?: number;
+  stationStatus?: "pending" | "preparing" | "ready" | "served";
   note?: string;
 };
 
@@ -73,7 +116,9 @@ export type Order = {
   gst: number;
   gstRate: number;
   total: number;
-  status: "pending" | "preparing" | "ready" | "served" | "billing" | "cancelled";
+  status: "pending" | "preparing" | "ready" | "served" | "billing" | "cancelled" | "merged";
+  kitchenStatus?: "pending" | "preparing" | "ready" | "served";
+  barStatus?: "pending" | "preparing" | "ready" | "served";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   customerNotes?: string;
   createdAt: string;
@@ -140,6 +185,23 @@ export async function getMenuItems(params?: { q?: string; category?: string; ava
   return data.menuItems;
 }
 
+export async function getBarItems(params?: {
+  q?: string;
+  category?: string;
+  available?: boolean;
+  stockStatus?: "in" | "low" | "out";
+  page?: number;
+  limit?: number;
+}) {
+  const { data } = await api.get<BarItemsResponse>("/bar-items", { params });
+  return data;
+}
+
+export async function getBarCategories() {
+  const { data } = await api.get<{ categories: string[] }>("/bar-items/categories");
+  return data.categories;
+}
+
 export async function getCategories() {
   const { data } = await api.get<{ categories: Category[] }>("/categories");
   return data.categories;
@@ -167,15 +229,15 @@ export async function getActiveOrders() {
 
 export async function submitTableOrder(payload: {
   tableId: string;
-  items: Array<{ menuItem: string; quantity: number; note?: string }>;
+  items: Array<{ menuItem?: string; barItem?: string; quantity: number; pegSize?: BarPegSize; note?: string }>;
   customerNotes?: string;
 }) {
   const { data } = await api.post<{ order: Order }>("/orders/table", payload);
   return data.order;
 }
 
-export async function updateOrderStatus(id: string, status: string) {
-  const { data } = await api.patch<{ order: Order }>(`/orders/${id}/table-status`, { status });
+export async function updateOrderStatus(id: string, status: string, station?: "kitchen" | "bar") {
+  const { data } = await api.patch<{ order: Order }>(`/orders/${id}/table-status`, { status, station });
   return data.order;
 }
 
@@ -208,6 +270,25 @@ export async function saveMenuItem(payload: Partial<MenuItem>, id?: string) {
 
 export async function deleteMenuItem(id: string) {
   await api.delete(`/menu-items/${id}`);
+}
+
+export async function saveBarItemForm(payload: FormData, id?: string) {
+  const { data } = id
+    ? await api.put<{ barItem: BarItem }>(`/bar-items/${id}`, payload)
+    : await api.post<{ barItem: BarItem }>("/bar-items", payload);
+  return data.barItem;
+}
+
+export async function deleteBarItem(id: string) {
+  await api.delete(`/bar-items/${id}`);
+}
+
+export function resolveAssetUrl(path?: string) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+
+  const baseUrl = String(api.defaults.baseURL || "").replace(/\/api\/?$/, "");
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export async function saveCategory(payload: Partial<Category>, id?: string) {

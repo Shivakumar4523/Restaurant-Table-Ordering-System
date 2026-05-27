@@ -4,14 +4,21 @@ const orderItemSchema = new mongoose.Schema(
   {
     food: { type: mongoose.Schema.Types.ObjectId, ref: "Food" },
     menuItem: { type: mongoose.Schema.Types.ObjectId, ref: "MenuItem" },
+    barItem: { type: mongoose.Schema.Types.ObjectId, ref: "BarItem" },
+    itemType: { type: String, enum: ["food", "menuItem", "barItem"], default: "menuItem" },
     name: String,
     image: String,
     price: Number,
     quantity: { type: Number, default: 1, min: 1 },
+    pegSize: String,
+    gstPercentage: Number,
+    stationStatus: { type: String, enum: ["pending", "preparing", "ready", "served"], default: "pending" },
     note: String
   },
   { _id: false }
 );
+
+const stationStatuses = ["pending", "preparing", "ready", "served"];
 
 const addressSchema = new mongoose.Schema(
   {
@@ -70,10 +77,13 @@ const orderSchema = new mongoose.Schema(
         "billing",
         "out-for-delivery",
         "delivered",
+        "merged",
         "cancelled"
       ],
       default: "pending"
     },
+    kitchenStatus: { type: String, enum: stationStatuses },
+    barStatus: { type: String, enum: stationStatuses },
     tracking: [
       {
         status: String,
@@ -83,7 +93,8 @@ const orderSchema = new mongoose.Schema(
     ],
     notes: String,
     customerNotes: String,
-    billNumber: String
+    billNumber: String,
+    mergedInto: { type: mongoose.Schema.Types.ObjectId, ref: "Order" }
   },
   { timestamps: true }
 );
