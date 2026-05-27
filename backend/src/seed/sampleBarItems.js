@@ -1,4 +1,5 @@
 import { BAR_CATEGORIES } from "../constants/barCategories.js";
+import { getBarItemImage } from "../utils/barItemImages.js";
 
 const MIN_ITEMS_PER_CATEGORY = 11;
 
@@ -10,7 +11,6 @@ const categoryProfiles = {
     alcoholType: "Beer",
     mlSize: 650,
     isAlcoholic: true,
-    imageKeywords: "beer,bottle,bar",
     description: (name) => `${name} served chilled with a crisp, refreshing finish.`
   },
   "Imported Beer": {
@@ -20,7 +20,6 @@ const categoryProfiles = {
     alcoholType: "Imported Beer",
     mlSize: 330,
     isAlcoholic: true,
-    imageKeywords: "imported-beer,bottle,bar",
     description: (name) => `${name} with smooth imported malt character, served ice cold.`
   },
   "Craft Beer": {
@@ -30,7 +29,6 @@ const categoryProfiles = {
     alcoholType: "Craft Beer",
     mlSize: 330,
     isAlcoholic: true,
-    imageKeywords: "craft-beer,pub",
     description: (name) => `${name} with bold craft flavour and a fresh pub-style pour.`
   },
   Whisky: {
@@ -40,7 +38,6 @@ const categoryProfiles = {
     alcoholType: "Whisky",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "whisky,glass",
     description: (name) => `${name} with warm oak, grain, and spice notes.`
   },
   Scotch: {
@@ -50,7 +47,6 @@ const categoryProfiles = {
     alcoholType: "Scotch",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "scotch,whisky",
     description: (name) => `${name} Scotch served neat, on the rocks, or with a mixer.`
   },
   Rum: {
@@ -60,7 +56,6 @@ const categoryProfiles = {
     alcoholType: "Rum",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "rum,cocktail",
     description: (name) => `${name} with caramel, spice, and tropical rum character.`
   },
   Vodka: {
@@ -70,7 +65,6 @@ const categoryProfiles = {
     alcoholType: "Vodka",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "vodka,bottle",
     description: (name) => `${name} clean vodka for shots, mixers, and cocktails.`
   },
   Gin: {
@@ -80,7 +74,6 @@ const categoryProfiles = {
     alcoholType: "Gin",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "gin-tonic,bar",
     description: (name) => `${name} with botanical aroma and a bright gin finish.`
   },
   Tequila: {
@@ -90,7 +83,6 @@ const categoryProfiles = {
     alcoholType: "Tequila",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "tequila,shot",
     description: (name) => `${name} tequila with agave bite and a clean finish.`
   },
   Brandy: {
@@ -100,7 +92,6 @@ const categoryProfiles = {
     alcoholType: "Brandy",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "brandy,glass",
     description: (name) => `${name} brandy with fruit, oak, and warming spice.`
   },
   Wine: {
@@ -110,7 +101,6 @@ const categoryProfiles = {
     alcoholType: "Wine",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "wine,bottle",
     description: (name) => `${name} bottle selected for smooth table service.`
   },
   Champagne: {
@@ -120,7 +110,6 @@ const categoryProfiles = {
     alcoholType: "Sparkling Wine",
     mlSize: 750,
     isAlcoholic: true,
-    imageKeywords: "champagne,sparkling-wine",
     description: (name) => `${name} sparkling bottle with crisp bubbles and a celebratory finish.`
   },
   Breezer: {
@@ -130,7 +119,6 @@ const categoryProfiles = {
     alcoholType: "Ready To Drink",
     mlSize: 275,
     isAlcoholic: true,
-    imageKeywords: "breezer,cocktail,bottle",
     description: (name) => `${name} ready-to-drink cooler served chilled.`
   },
   Cocktails: {
@@ -140,7 +128,6 @@ const categoryProfiles = {
     alcoholType: "Cocktail",
     mlSize: 300,
     isAlcoholic: true,
-    imageKeywords: "cocktail,bar",
     description: (name) => `${name} mixed fresh by the bar team and served over ice.`
   },
   Mocktails: {
@@ -150,7 +137,6 @@ const categoryProfiles = {
     alcoholType: "Mocktail",
     mlSize: 300,
     isAlcoholic: false,
-    imageKeywords: "mocktail,drink",
     description: (name) => `${name} alcohol-free cooler with bright fruit and fresh garnish.`
   },
   "Energy Drinks": {
@@ -160,7 +146,6 @@ const categoryProfiles = {
     alcoholType: "Energy Drink",
     mlSize: 250,
     isAlcoholic: false,
-    imageKeywords: "energy-drink,can",
     description: (name) => `${name} chilled energy drink for mixers or standalone service.`
   },
   "Soft Drinks": {
@@ -170,7 +155,6 @@ const categoryProfiles = {
     alcoholType: "Soft Drink",
     mlSize: 300,
     isAlcoholic: false,
-    imageKeywords: "soft-drink,can",
     description: (name) => `${name} soft drink served chilled.`
   },
   "Soda Mixers": {
@@ -180,7 +164,6 @@ const categoryProfiles = {
     alcoholType: "Mixer",
     mlSize: 300,
     isAlcoholic: false,
-    imageKeywords: "tonic-water,soda",
     description: (name) => `${name} mixer for spirits, cocktails, and table service.`
   }
 };
@@ -456,10 +439,6 @@ function inferBrand(name) {
   return match || name.split(" ").slice(0, 2).join(" ");
 }
 
-function imageUrl(profile, seed) {
-  return `https://loremflickr.com/900/700/${profile.imageKeywords}?lock=${seed}`;
-}
-
 function adjustPrices(prices, categoryIndex, itemIndex) {
   const factor = 1 + (itemIndex % 5) * 0.12 + Math.floor(itemIndex / 5) * 0.08 + categoryIndex * 0.005;
   return Object.fromEntries(
@@ -470,13 +449,12 @@ function adjustPrices(prices, categoryIndex, itemIndex) {
 function createBarItem(category, name, itemIndex) {
   const profile = categoryProfiles[category];
   const categoryIndex = BAR_CATEGORIES.indexOf(category);
-  const seed = 2000 + categoryIndex * 100 + itemIndex;
 
   return {
     name,
     category,
     description: profile.description(name),
-    image: imageUrl(profile, seed),
+    image: getBarItemImage({ name, category, alcoholType: profile.alcoholType }),
     prices: adjustPrices(profile.prices, categoryIndex, itemIndex),
     stock: Math.max(6, profile.stock - (itemIndex % 6) * 2),
     preparationTime: profile.preparationTime,

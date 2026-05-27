@@ -156,17 +156,43 @@ function WaiterOrders() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerNotes, setCustomerNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([getTables(), getCategories(), getMenuItems(), getBarItems({ limit: 240 })]).then(([tableData, categoryData, menuData, barData]) => {
-      setTables(tableData);
-      setCategories(categoryData);
-      setItems(menuData);
-      setBarItems(barData.barItems);
-      setBarCategories(barData.categories);
-      setSelectedTable(tableData[0] || null);
-    });
+    let active = true;
+
+    async function loadCatalog() {
+      setCatalogLoading(true);
+
+      try {
+        const [tableData, categoryData, menuData, barData] = await Promise.all([
+          getTables(),
+          getCategories(),
+          getMenuItems(),
+          getBarItems({ limit: 240 })
+        ]);
+
+        if (!active) return;
+
+        setTables(tableData);
+        setCategories(categoryData);
+        setItems(menuData);
+        setBarItems(barData.barItems);
+        setBarCategories(barData.categories);
+        setSelectedTable(tableData[0] || null);
+      } catch (error) {
+        if (active) setMessage(getErrorMessage(error, "Unable to load ordering items."));
+      } finally {
+        if (active) setCatalogLoading(false);
+      }
+    }
+
+    loadCatalog();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -416,7 +442,11 @@ function WaiterOrders() {
           </div>
         </div>
         <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {menuMode === "food"
+          {catalogLoading ? (
+            <p className="col-span-full rounded-[8px] border border-gold-300/20 bg-white/5 p-6 text-center text-sm font-black text-white/70">
+              Loading items...
+            </p>
+          ) : menuMode === "food"
             ? visibleItems.map((item) => (
                 <MenuCard
                   key={item._id}
@@ -435,6 +465,16 @@ function WaiterOrders() {
                   onQuantityChange={(nextPegSize, quantity) => setBarQuantity(barLineKey(item, nextPegSize), quantity)}
                 />
               ))}
+          {!catalogLoading && menuMode === "food" && !visibleItems.length ? (
+            <p className="col-span-full rounded-[8px] border border-gold-300/20 bg-white/5 p-6 text-center text-sm font-black text-white/70">
+              No food items found.
+            </p>
+          ) : null}
+          {!catalogLoading && menuMode === "bar" && !visibleBarItems.length ? (
+            <p className="col-span-full rounded-[8px] border border-gold-300/20 bg-white/5 p-6 text-center text-sm font-black text-white/70">
+              No bar items found. Add drinks in Admin &gt; Bar Items or run the bar seed command on the server.
+            </p>
+          ) : null}
         </div>
       </section>
     </main>

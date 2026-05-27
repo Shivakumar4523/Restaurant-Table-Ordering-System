@@ -3,6 +3,7 @@ import MenuItem from "../models/MenuItem.js";
 import Order from "../models/Order.js";
 import Payment from "../models/Payment.js";
 import Table from "../models/Table.js";
+import { getDisplayBarItemImage } from "../utils/barItemImages.js";
 import { calculateBill } from "../utils/gst.js";
 
 const activeStatuses = ["pending", "preparing", "ready", "served", "billing"];
@@ -42,7 +43,7 @@ async function buildItems(items) {
         barItem: barItem._id,
         itemType: "barItem",
         name: `${barItem.name} (${formatPegSize(pegSize)})`,
-        image: barItem.image,
+        image: getDisplayBarItemImage(barItem),
         price,
         quantity,
         pegSize,
@@ -408,7 +409,7 @@ export async function createTableOrder(req, res, next) {
     await Promise.all(
       barDeductions.map((deduction) =>
         BarItem.findByIdAndUpdate(deduction.id, { $inc: { stock: -deduction.quantity } }, { new: true }).then((barItem) => {
-          if (barItem) io?.emit("bar-item:updated", barItem);
+          if (barItem) io?.emit("bar-item:updated", { ...barItem.toObject(), image: getDisplayBarItemImage(barItem) });
         })
       )
     );

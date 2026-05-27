@@ -9,6 +9,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import { connectDB } from "./config/db.js";
+import { ensureSampleBarItems } from "./seed/ensureSampleBarItems.js";
 import authRoutes from "./routes/authRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import foodRoutes from "./routes/foodRoutes.js";
@@ -136,6 +137,12 @@ io.on("connection", (socket) => {
 });
 
 connectDB()
+  .then(async () => {
+    const seedResult = await ensureSampleBarItems();
+    if (seedResult.inserted > 0) {
+      console.log(`Seeded ${seedResult.inserted} sample bar items.`);
+    }
+  })
   .then(() => {
     server.listen(port, () => console.log(`Royal Spice API running on port ${port}`));
   })

@@ -1,5 +1,6 @@
 import { BAR_CATEGORIES } from "../constants/barCategories.js";
 import BarItem from "../models/BarItem.js";
+import { getDisplayBarItemImage } from "../utils/barItemImages.js";
 
 const numberFields = new Set([
   "price30ml",
@@ -101,6 +102,14 @@ function flattenPricePatch(payload) {
   return patch;
 }
 
+function withDisplayImage(item) {
+  const data = typeof item?.toObject === "function" ? item.toObject() : { ...item };
+
+  data.image = getDisplayBarItemImage(data);
+
+  return data;
+}
+
 function buildBarItemFilter(query) {
   const { q, category, available, stockStatus } = query;
   const filter = {};
@@ -141,7 +150,7 @@ export async function getBarItems(req, res, next) {
     ]);
 
     res.json({
-      barItems,
+      barItems: barItems.map(withDisplayImage),
       categories: BAR_CATEGORIES,
       pagination: {
         page,
@@ -159,7 +168,7 @@ export async function getBarItem(req, res, next) {
   try {
     const barItem = await BarItem.findById(req.params.id);
     if (!barItem) return res.status(404).json({ message: "Bar item not found" });
-    res.json({ barItem });
+    res.json({ barItem: withDisplayImage(barItem) });
   } catch (error) {
     next(error);
   }
@@ -168,9 +177,11 @@ export async function getBarItem(req, res, next) {
 export async function createBarItem(req, res, next) {
   try {
     const payload = normalizeBarItemPayload(req.body, req.file);
+    payload.image = getDisplayBarItemImage(payload);
     const barItem = await BarItem.create(payload);
-    req.app.get("io")?.emit("bar-item:updated", barItem);
-    res.status(201).json({ barItem });
+    const responseBarItem = withDisplayImage(barItem);
+    req.app.get("io")?.emit("bar-item:updated", responseBarItem);
+    res.status(201).json({ barItem: responseBarItem });
   } catch (error) {
     next(error);
   }
@@ -183,8 +194,9 @@ export async function updateBarItem(req, res, next) {
 
     if (!barItem) return res.status(404).json({ message: "Bar item not found" });
 
-    req.app.get("io")?.emit("bar-item:updated", barItem);
-    res.json({ barItem });
+    const responseBarItem = withDisplayImage(barItem);
+    req.app.get("io")?.emit("bar-item:updated", responseBarItem);
+    res.json({ barItem: responseBarItem });
   } catch (error) {
     next(error);
   }

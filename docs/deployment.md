@@ -34,6 +34,12 @@ docker compose --env-file .env up --build -d
 docker compose exec backend npm run seed
 ```
 
+The backend also auto-seeds the bar item catalog when the `baritems` collection is empty, so a fresh deployment will show bar items after the API restarts. To backfill only bar items on an existing deployment, run:
+
+```bash
+docker compose exec backend npm run seed:bar
+```
+
 5. Open:
 
 ```txt
