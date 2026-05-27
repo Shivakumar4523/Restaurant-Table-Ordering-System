@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import { connectDB } from "./config/db.js";
 import { ensureSampleBarItems } from "./seed/ensureSampleBarItems.js";
+import { ensureSampleStaffUsers } from "./seed/ensureSampleStaffUsers.js";
 import authRoutes from "./routes/authRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import foodRoutes from "./routes/foodRoutes.js";
@@ -138,9 +139,12 @@ io.on("connection", (socket) => {
 
 connectDB()
   .then(async () => {
-    const seedResult = await ensureSampleBarItems();
-    if (seedResult.inserted > 0) {
-      console.log(`Seeded ${seedResult.inserted} sample bar items.`);
+    const [barSeedResult, staffSeedResult] = await Promise.all([ensureSampleBarItems(), ensureSampleStaffUsers()]);
+    if (barSeedResult.inserted > 0) {
+      console.log(`Seeded ${barSeedResult.inserted} sample bar items.`);
+    }
+    if (staffSeedResult.created > 0 || staffSeedResult.updated > 0) {
+      console.log(`Sample staff users ready: ${staffSeedResult.created} created, ${staffSeedResult.updated} updated.`);
     }
   })
   .then(() => {

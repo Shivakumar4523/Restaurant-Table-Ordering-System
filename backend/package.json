@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node src/seed.js",
-    "seed:bar": "node src/seedBarItems.js"
+    "seed:bar": "node src/seedBarItems.js",
+    "seed:staff": "node src/seedStaffUsers.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
