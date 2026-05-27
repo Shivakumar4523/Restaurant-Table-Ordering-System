@@ -33,16 +33,16 @@ export function Sidebar() {
   const visibleQuickLinks = quickLinks.filter((link) => user && link.roles.includes(user.role));
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-white/10 bg-forest-900 p-5 text-white lg:block xl:w-72">
-      <div>
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-forest-900 p-4 text-white lg:flex xl:w-72">
+      <div className="shrink-0">
         <img src="/royal-spice-brand.svg" alt="Shiva Royal Spice Restaurant and Bar" className="h-auto w-full object-contain" />
         <p className="mt-3 truncate text-sm font-black uppercase text-gold-300">Table Ordering System</p>
       </div>
-      <div className="mt-8 rounded-[8px] bg-white/10 p-4">
+      <div className="mt-5 shrink-0 rounded-[8px] bg-white/10 p-4">
         <p className="truncate font-black">{user?.name}</p>
         <p className="mt-1 text-xs font-bold uppercase text-gold-300">{user?.role}</p>
       </div>
-      <nav className="mt-6 space-y-2">
+      <nav className="mt-5 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {links
           .filter((link) => user && link.roles.includes(user.role))
           .map((link) => {
@@ -61,12 +61,12 @@ export function Sidebar() {
                 }
               >
                 <Icon size={18} />
-                {label}
+                <span className="min-w-0 truncate">{label}</span>
               </NavLink>
             );
           })}
       </nav>
-      <div className="absolute bottom-5 left-5 right-5 space-y-3">
+      <div className="mt-5 shrink-0 space-y-3 border-t border-white/10 pt-4">
         {visibleQuickLinks.length ? (
           <div className={`${visibleQuickLinks.length === 1 ? "grid-cols-1" : "grid-cols-2"} grid gap-2 text-xs`}>
             {visibleQuickLinks.map(({ href, label, icon: Icon }) => (
@@ -76,7 +76,7 @@ export function Sidebar() {
                 className="rounded-[8px] bg-white/10 p-3 text-left transition hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-300"
               >
                 <Icon size={16} />
-                <p className="mt-2 font-black">{label}</p>
+                <p className="mt-2 break-words font-black leading-tight">{label}</p>
               </Link>
             ))}
           </div>
